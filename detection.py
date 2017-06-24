@@ -5,6 +5,11 @@ import imutils
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 
+save_paticles = []
+save_centers = []
+colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
+          "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
+
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 
@@ -16,6 +21,7 @@ fgbg = cv2.BackgroundSubtractorMOG()
 
 while(1):
     ret, frame = cap.read()
+    #resize because of the performance
     frame = imutils.resize(frame, width=500)
 
     #learning rate set to 0
@@ -43,11 +49,19 @@ while(1):
         # draw the particles
         mean = [cX, cY]
         cov = [[10, 0], [0, 10]]
-        part_x, part_y = np.random.multivariate_normal(mean, cov, 10000).T
+        number_particles = 100
+        part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
+        # plot the particles
         #plt.plot(part_x, part_y, 'x')
         #plt.axis('equal')
-        #plt.show()        
-        
+        #plt.show()
+
+        # build the matrix of the centers
+        save_centers.append([cX,cY])
+
+        # build the matrix of the particles
+        for i,j in zip(part_x,part_y):
+			save_paticles.append([i,j])
 
  
     cv2.imshow('fgmask',fgmask)

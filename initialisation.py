@@ -29,10 +29,24 @@ class Particle(object):
 
 
 # spread the n particles in the shape (defined by a center) from a Normal distribution centered at the detection center
-def repartition(x_center,y_center,number_particules):
+def repartition(x_center, y_center, number_particules):
 	mean = [x_center, y_center]
 	cov = [[100, 0], [0, 100]]
 	x, y = np.random.multivariate_normal(mean, cov, number_particules).T
 	plt.plot(x, y, 'x')
 	plt.axis('equal')
 	plt.show()
+
+# create the matrix of the particles given the vectors of the coordinates of the centers. 
+# create coordinates in the way [x,y]
+def matrix_particles(x_coords, y_coords, matrix):
+	matrix = []
+	for i,j in zip(x_coords,y_coords):
+		matrix.append([i,j])
+
+
+def matrix_centers(x_center, y_center, matrix):
+	matrix = []
+	matrix.append([x_center,y_center])
+
+
