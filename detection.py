@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 
 save_paticles = []
-save_centers = []
+save_detections = []
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 number_particles = 100
@@ -16,6 +16,7 @@ number_particles = 100
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 
+# minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 min_area = 50
 
 cap = cv2.VideoCapture(video)
@@ -60,12 +61,16 @@ while(1):
         #plt.axis('equal')
         #plt.show()
 
-        # build the matrix of the centers
-        save_centers.append([cX,cY])
+        # build the matrix of the detections respecting data model
+        # detection : x_center, y_center, x_min_contour, y_min_contour, x_max_contour, y_max_contour
+        save_detections.append([cX,cY,x,y,x+w,y+h])
 
-        # build the matrix of the particles
+        # build the matrix of the particles respecting data model
+        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born
+        weight = 0
+        frame_born = 0
         for i,j in zip(part_x,part_y):
-			save_paticles.append([i,j])
+			save_paticles.append([i,j,weight,cX,cY,frame_born])
 
  
     cv2.imshow('fgmask',fgmask)
