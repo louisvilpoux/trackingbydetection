@@ -1,3 +1,5 @@
+#cd Documents/Manchester/Dissertation/trackingbydetection/
+
 import numpy as np
 import pandas as pd
 import cv2
@@ -9,6 +11,7 @@ save_paticles = []
 save_centers = []
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
+number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
@@ -47,9 +50,10 @@ while(1):
         cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # draw the particles
+        # find the optimal size limit for the particles spread
         mean = [cX, cY]
-        cov = [[10, 0], [0, 10]]
-        number_particles = 100
+        val_cov = min(w,h)
+        cov = [[val_cov, 0], [0, val_cov]]
         part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
         # plot the particles
         #plt.plot(part_x, part_y, 'x')
