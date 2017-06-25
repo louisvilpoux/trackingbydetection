@@ -19,6 +19,8 @@ video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 # minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 min_area = 50
 
+nb = 0
+
 cap = cv2.VideoCapture(video)
 #fgbg = cv2.BackgroundSubtractorMOG2()
 fgbg = cv2.BackgroundSubtractorMOG()
@@ -43,7 +45,7 @@ while(1):
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        # compute the center of the contour for each detection
+        # compute the center of the contour for each detection. cX and cY are the coords of the detection center
         M = cv2.moments(c)
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
@@ -70,7 +72,12 @@ while(1):
         weight = 0
         frame_born = 0
         for i,j in zip(part_x,part_y):
-			save_paticles.append([i,j,weight,cX,cY,frame_born])
+			save_paticles.append([i,j,weight,None,None,frame_born])
+
+        # Print the data of a special frame
+        # nb = nb + 1
+        # if nb == 1:
+        #     print("part", save_paticles)
 
  
     cv2.imshow('fgmask',fgmask)
