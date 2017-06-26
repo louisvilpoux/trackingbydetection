@@ -20,6 +20,7 @@ video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 min_area = 50
 
 nb = 0
+val = 1000
 
 cap = cv2.VideoCapture(video)
 #fgbg = cv2.BackgroundSubtractorMOG2()
@@ -78,6 +79,13 @@ while(1):
         # nb = nb + 1
         # if nb == 1:
         #     print("part", save_paticles)
+
+    # Calculate the distance between each detection,particle pair.
+    for detect in save_detections:
+        for particl in save_paticles:
+            d = [detect[0],detect[1]]
+            p = [particl[0],particl[1]]
+            norm_d_p = ssp.distance.euclidean(d,p)
 
  
     cv2.imshow('fgmask',fgmask)
