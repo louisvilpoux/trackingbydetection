@@ -1,4 +1,5 @@
-#cd Documents/Manchester/Dissertation/trackingbydetection/
+# /Users/louisvilpoux/anaconda/bin/jupyter_mac.command ; exit;
+# cd Documents/Manchester/Dissertation/trackingbydetection/
 
 import numpy as np
 import pandas as pd
@@ -34,6 +35,8 @@ while(1):
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
     fgmask = fgbg.apply(frame, learningRate=1.0/10)
+
+    # erosion/dilatation
     
     (cnts, _) = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -81,11 +84,11 @@ while(1):
         #     print("part", save_paticles)
 
     # Calculate the distance between each detection,particle pair.
-    for detect in save_detections:
-        for particl in save_paticles:
-            d = [detect[0],detect[1]]
-            p = [particl[0],particl[1]]
-            norm_d_p = ssp.distance.euclidean(d,p)
+    # for detect in save_detections:
+    #     for particl in save_paticles:
+    #         d = [detect[0],detect[1]]
+    #         p = [particl[0],particl[1]]
+            #norm_d_p = ssp.distance.euclidean(d,p)
 
  
     cv2.imshow('fgmask',fgmask)
