@@ -23,6 +23,14 @@ min_area = 100
 nb = 0
 val = 1000
 
+# first frame in the video
+firstFrame = None
+
+# dictionary of unique detections
+uniq_detection = dict()
+
+threshold_compare_hist = 0.8
+
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
@@ -57,6 +65,32 @@ while(1):
         cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
         cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
+        # Compute the descriptor : histogram of the color of the detection
+        # first convert the detection into a RGB image : OpenCV stores images in BGR format rather than RGB ; 
+        # matplotlib is going to be used to display the results and matplotlib assumes the image is in RGB format
+        # second the histogram is computed and then it is normalized
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        hist = cv2.calcHist([frame_rgb[x:x+w, y:y+h]], [0, 1, 2], None, [8, 8, 8],[0, 256, 0, 256, 0, 256])
+        hist = cv2.normalize(hist).flatten()
+
+        # if it is the first frame, add all the detections in the dictionary with their hist
+        # test for this new data model
+        if firstFrame is None:
+            uniq_detection[cX] = hist
+
+        # Comparison of the descriptor of the past detections
+        # Try first if it is not the first frame and if we already have detect some objects
+        # Different methods to compare histograms
+        # cv2.cv.CV_COMP_CORREL ; cv2.cv.CV_COMP_CHISQR ; cv2.cv.CV_COMP_INTERSECT ; cv2.cv.CV_COMP_BHATTACHARYYA
+        # Given a threshold for the comparison, we decide if it is a new detection or not
+        if firstFrame is not None and save_detections:
+            for hist_detec in uniq_detection.values():
+                if cv2.compareHist(hist,hist_detec,cv2.cv.CV_COMP_CORREL) < threshold_compare_hist:
+                    uniq_detection[cX] = hist
+
+
+        # print(len(uniq_detection))
+
         # draw the particles
         # find the optimal size limit for the particles spread
         mean = [cX, cY]
@@ -70,7 +104,7 @@ while(1):
 
         # build the matrix of the detections respecting data model
         # detection : x_center, y_center, x_min_contour, y_min_contour, x_max_contour, y_max_contour
-        save_detections.append([cX,cY,x,y,x+w,y+h])
+        save_detections.append([cX,cY,x,y,x+w,y+h,hist])
 
         # build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born
@@ -79,10 +113,12 @@ while(1):
         for i,j in zip(part_x,part_y):
 			save_paticles.append([i,j,weight,None,None,frame_born])
 
+
         # Print the data of a special frame
         # nb = nb + 1
-        # if nb == 1:
-        #     print("part", save_paticles)
+        # if nb == 200:
+        #     print("comp_hist", comp_hist)
+
 
     # Calculate the distance between each detection,particle pair.
     # for detect in save_detections:
@@ -90,6 +126,9 @@ while(1):
     #         d = [detect[0],detect[1]]
     #         p = [particl[0],particl[1]]
             #norm_d_p = ssp.distance.euclidean(d,p)
+
+    # not anymore the first frame
+    firstFrame = 1
 
  
     cv2.imshow('fgmask',fgmask)
