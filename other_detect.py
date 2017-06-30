@@ -23,9 +23,11 @@ min_area = 100
 nb = 0
 val = 1000
 
+firstFrame = None
+
 cap = cv2.VideoCapture(video)
-fgbg = cv2.BackgroundSubtractorMOG2()
-#fgbg = cv2.BackgroundSubtractorMOG()
+#fgbg = cv2.BackgroundSubtractorMOG2()
+fgbg = cv2.BackgroundSubtractorMOG()
 
 while(1):
     ret, frame = cap.read()
@@ -36,10 +38,23 @@ while(1):
     #fgmask = fgbg.apply(frame)
     fgmask = fgbg.apply(frame, learningRate=1.0/10)
 
-    # Dilation
-    dilation = cv2.dilate(fgmask,None,iterations = 2);
+    # from tests
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (21, 21), 0)
+ 
+    # if the first frame is None, initialize it
+    if firstFrame is None:
+        firstFrame = gray
+        continue
+    # erosion/dilation
+    # erosion = cv2.erode(fgmask,None,iterations = 1);
+    # dilation = cv2.dilate(erosion,None,iterations = 1);
+    frameDelta = cv2.absdiff(firstFrame, gray)
+    thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.dilate(thresh, None, iterations=2)
     
-    (cnts, _) = cv2.findContours(dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #(cnts, _) = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for c in cnts:
 		# if the contour is too small, ignore it
