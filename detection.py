@@ -7,6 +7,7 @@ import cv2
 import imutils
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
+import scipy.spatial as ssp
 
 save_paticles = []
 save_detections = []
@@ -30,6 +31,7 @@ firstFrame = None
 uniq_detection = dict()
 
 threshold_compare_hist = 0.8
+threshold_compare_dist = 1
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
@@ -76,17 +78,40 @@ while(1):
         # if it is the first frame, add all the detections in the dictionary with their hist
         # test for this new data model
         if firstFrame is None:
-            uniq_detection[cX] = hist
+            uniq_detection[cX/cY] = [hist,cX,cY]
 
-        # Comparison of the descriptor of the past detections
-        # Try first if it is not the first frame and if we already have detect some objects
-        # Different methods to compare histograms
+        # Comparison of the descriptor of the past detections.
+        # Try first if it is not the first frame and if we already have detect some objects.
+        # Different methods to compare histograms :
         # cv2.cv.CV_COMP_CORREL ; cv2.cv.CV_COMP_CHISQR ; cv2.cv.CV_COMP_INTERSECT ; cv2.cv.CV_COMP_BHATTACHARYYA
         # Given a threshold for the comparison, we decide if it is a new detection or not
+        # If it is not a new detection, update the values of the dictionary using the distance to the center.
+        # If the value of the comparison is greater than a threshold, the histogram is considered as a candidate 
+        # histogram. The distance between the centers will help us to understand from which detection does the 
+        # candidate histogram belong. If the centers are too far away, eq the distance is greater than a threshold,
+        # it means that this is not a candidate. In the case that there no candidate after this test, the histogram
+        # will be add as a new detection.
+        # Different distances can be used :
+        # sqeuclidean ; cosine ; correlation ; hamming ; jaccard
+        candidate_key = []
+        candidate_dist = []
         if firstFrame is not None and save_detections:
-            for hist_detec in uniq_detection.values():
-                if cv2.compareHist(hist,hist_detec,cv2.cv.CV_COMP_CORREL) < threshold_compare_hist:
-                    uniq_detection[cX] = hist
+            for key_detec, val_detec in uniq_detection.iteritems():
+                used = False
+                if cv2.compareHist(hist,val_detec[0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
+                    dist_centers = ssp.distance.cdist([(val_detec[1],val_detec[2])],[(cX,cY)],'euclidean')[0][0]
+                    if dist_centers < threshold_compare_dist:
+                        used = True
+                        candidate_key.append(key_detec)
+                        candidate_dist.append(dist_centers)
+            # we must update a detector
+            if used == True:
+                index = candidate_dist.index(min(candidate_dist))
+                uniq_detection[candidate_key[index]] = [hist,cX,cY]
+            # we must add a new detector
+            else:
+                uniq_detection[cX/cY] = [hist,cX,cY]
+
 
 
         # print(len(uniq_detection))
@@ -117,7 +142,7 @@ while(1):
         # Print the data of a special frame
         # nb = nb + 1
         # if nb == 200:
-        #     print("comp_hist", comp_hist)
+        #     print("distance", res)
 
 
     # Calculate the distance between each detection,particle pair.
