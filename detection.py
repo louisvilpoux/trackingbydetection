@@ -141,7 +141,8 @@ while(1):
         save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group])
 
         # build the matrix of the particles respecting data model
-        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born
+        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born,
+        # initial motion direction, initial velocity
         weight = 0
         frame_born = 0
         for i,j in zip(part_x,part_y):
@@ -156,7 +157,7 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_up or distance_min_border == dist_bottom:
                 init_motion_dir = [1,0]
-            save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir])
+            save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir,[0,0]])
 
 
         # Print the data of a special frame
@@ -164,6 +165,7 @@ while(1):
         # if nb == 20:
         #     print("distance", dist_centers)
 
+    ### Update the particles ###
 
     # Calculate the distance between each detection,particle pair.
     # for detect in save_detections:
