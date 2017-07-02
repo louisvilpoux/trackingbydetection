@@ -1,6 +1,8 @@
 # /Users/louisvilpoux/anaconda/bin/jupyter_mac.command ; exit;
 # cd Documents/Manchester/Dissertation/trackingbydetection/
 
+# repere used : x_ord go to the right (->) ; y_ord go to the bottom (|)
+
 import numpy as np
 import pandas as pd
 import cv2
@@ -9,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import scipy.spatial as ssp
 
-save_paticles = []
+save_particles = []
 save_detections = []
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
@@ -40,7 +42,8 @@ fgbg = cv2.BackgroundSubtractorMOG2()
 while(1):
     ret, frame = cap.read()
     #resize because of the performance
-    frame = imutils.resize(frame, width=500)
+    width = 500
+    frame = imutils.resize(frame, width=width)
 
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
@@ -142,7 +145,18 @@ while(1):
         weight = 0
         frame_born = 0
         for i,j in zip(part_x,part_y):
-			save_paticles.append([i,j,weight,None,None,frame_born])
+            # Initialisation of the motion direction : orthogonal to the closest image borders
+            dist_right = width - i
+            dist_up = j
+            dist_left = i
+            dist_bottom = width - j
+            distance_border = [dist_right,dist_up,dist_left,dist_bottom]
+            distance_min_border = min(distance_border)
+            if distance_min_border == dist_right or distance_min_border == dist_left:
+                init_motion_dir = [0,1]
+            if distance_min_border == dist_up or distance_min_border == dist_bottom:
+                init_motion_dir = [1,0]
+            save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir])
 
 
         # Print the data of a special frame
@@ -153,7 +167,7 @@ while(1):
 
     # Calculate the distance between each detection,particle pair.
     # for detect in save_detections:
-    #     for particl in save_paticles:
+    #     for particl in save_particles:
     #         d = [detect[0],detect[1]]
     #         p = [particl[0],particl[1]]
             #norm_d_p = ssp.distance.euclidean(d,p)
