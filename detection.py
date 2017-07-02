@@ -90,9 +90,9 @@ while(1):
         # If it is not a new detection, update the values of the dictionary using the distance to the center.
         # If the value of the comparison is greater than a threshold, the histogram is considered as a candidate 
         # histogram. The distance between the centers will help us to understand from which detection does the 
-        # candidate histogram belong. If the centers are too far away, eq the distance is greater than a threshold,
-        # it means that this is not a candidate. In the case that there no candidate after this test, the histogram
-        # will be add as a new detection.
+        # candidate histogram belong. The candidate detections are those which have a similar histogram.
+        # The best candidate is the detection that has its center closest to the testing detection center.
+        # In the case that there is no candidate after this test, the histogram will be add as a new detection.
         # Different distances can be used :
         # sqeuclidean ; cosine ; correlation ; hamming ; jaccard
         # A text describes the number of the detection
@@ -104,10 +104,9 @@ while(1):
                 for key_detec, val_detec in uniq_detection.iteritems():
                     if cv2.compareHist(hist,val_detec[0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
                         dist_centers = ssp.distance.cdist([(val_detec[1],val_detec[2])],[(cX,cY)],'euclidean')[0][0]
-                        if dist_centers < threshold_compare_dist:
-                            used = True
-                            candidate_key.append(key_detec)
-                            candidate_dist.append(dist_centers)
+                        used = True
+                        candidate_key.append(key_detec)
+                        candidate_dist.append(dist_centers)
             # we must update a detector
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
@@ -120,7 +119,7 @@ while(1):
                 uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
                 cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-        #print(len(uniq_detection))
+        # print(len(uniq_detection))
 
         # draw the particles
         # find the optimal size limit for the particles spread
