@@ -78,7 +78,8 @@ while(1):
         # if it is the first frame, add all the detections in the dictionary with their hist
         # test for this new data model
         if firstFrame is None:
-            uniq_detection[len(uniq_detection)] = [hist,cX,cY]
+            detect_group = len(uniq_detection)
+            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
             cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
@@ -110,11 +111,13 @@ while(1):
             # we must update a detector
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
-                uniq_detection[candidate_key[index]] = [hist,cX,cY]
+                detect_group = candidate_key[index]
+                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
                 cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
-                uniq_detection[len(uniq_detection)] = [hist,cX,cY]
+                detect_group = len(uniq_detection)
+                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
                 cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         #print(len(uniq_detection))
@@ -130,9 +133,10 @@ while(1):
         #plt.axis('equal')
         #plt.show()
 
-        # build the matrix of the detections respecting data model
-        # detection : x_center, y_center, x_min_contour, y_min_contour, x_max_contour, y_max_contour
-        save_detections.append([cX,cY,x,y,x+w,y+h,hist])
+        # Build the matrix of the detections respecting data model
+        # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
+        # y_max_contour, group of detection
+        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group])
 
         # build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born
