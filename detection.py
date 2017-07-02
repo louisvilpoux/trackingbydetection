@@ -31,7 +31,7 @@ firstFrame = None
 uniq_detection = dict()
 
 threshold_compare_hist = 0.8
-threshold_compare_dist = 1
+threshold_compare_dist = 100
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
@@ -65,7 +65,7 @@ while(1):
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
         cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
-        cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        #cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Compute the descriptor : histogram of the color of the detection
         # first convert the detection into a RGB image : OpenCV stores images in BGR format rather than RGB ; 
@@ -78,7 +78,8 @@ while(1):
         # if it is the first frame, add all the detections in the dictionary with their hist
         # test for this new data model
         if firstFrame is None:
-            uniq_detection[cX/cY] = [hist,cX,cY]
+            uniq_detection[len(uniq_detection)] = [hist,cX,cY]
+            cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
         # Try first if it is not the first frame and if we already have detect some objects.
@@ -93,28 +94,30 @@ while(1):
         # will be add as a new detection.
         # Different distances can be used :
         # sqeuclidean ; cosine ; correlation ; hamming ; jaccard
+        # A text describes the number of the detection
         candidate_key = []
         candidate_dist = []
-        if firstFrame is not None and save_detections:
-            for key_detec, val_detec in uniq_detection.iteritems():
-                used = False
-                if cv2.compareHist(hist,val_detec[0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
-                    dist_centers = ssp.distance.cdist([(val_detec[1],val_detec[2])],[(cX,cY)],'euclidean')[0][0]
-                    if dist_centers < threshold_compare_dist:
-                        used = True
-                        candidate_key.append(key_detec)
-                        candidate_dist.append(dist_centers)
+        if firstFrame is not None:
+            used = False
+            if len(uniq_detection) != 0:
+                for key_detec, val_detec in uniq_detection.iteritems():
+                    if cv2.compareHist(hist,val_detec[0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
+                        dist_centers = ssp.distance.cdist([(val_detec[1],val_detec[2])],[(cX,cY)],'euclidean')[0][0]
+                        if dist_centers < threshold_compare_dist:
+                            used = True
+                            candidate_key.append(key_detec)
+                            candidate_dist.append(dist_centers)
             # we must update a detector
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
                 uniq_detection[candidate_key[index]] = [hist,cX,cY]
+                cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
-                uniq_detection[cX/cY] = [hist,cX,cY]
+                uniq_detection[len(uniq_detection)] = [hist,cX,cY]
+                cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-
-
-        # print(len(uniq_detection))
+        #print(len(uniq_detection))
 
         # draw the particles
         # find the optimal size limit for the particles spread
@@ -141,8 +144,8 @@ while(1):
 
         # Print the data of a special frame
         # nb = nb + 1
-        # if nb == 200:
-        #     print("distance", res)
+        # if nb == 20:
+        #     print("distance", dist_centers)
 
 
     # Calculate the distance between each detection,particle pair.
