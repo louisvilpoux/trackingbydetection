@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import scipy.spatial as ssp
 import itertools
+import datetime
 
 save_particles = []
 save_detections = []
@@ -22,15 +23,15 @@ number_particles = 100
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 
-# minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
+# Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 min_area = 100
 
 nb = 0
 
-# first frame in the video
+# First frame in the video
 firstFrame = None
 
-# dictionary of unique detections
+# Dictionary of unique detections
 uniq_detection = dict()
 
 threshold_compare_hist = 0.85
@@ -38,6 +39,9 @@ threshold_compare_hist = 0.85
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
+
+# Start of the timestamp
+ts = datetime.datetime.now()
 
 
 while(1):
@@ -83,7 +87,9 @@ while(1):
         # test for this new data model
         if firstFrame is None:
             detect_group = len(uniq_detection)
-            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
+            velocity_target = 0
+            timestamp = datetime.datetime.now()
+            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
             cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
@@ -115,12 +121,17 @@ while(1):
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
                 detect_group = candidate_key[index]
-                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
+                timestamp = ts - datetime.datetime.now()
+                timestamp = timestamp.total_seconds()
+                velocity_target = min(candidate_dist) / timestamp
+                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
                 cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
                 detect_group = len(uniq_detection)
-                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group]
+                velocity_target = 0
+                timestamp = datetime.datetime.now()
+                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
                 cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # print(len(uniq_detection))
@@ -128,7 +139,7 @@ while(1):
         # Build the matrix of the detections respecting data model
         # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
         # y_max_contour, group of detection
-        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group])
+        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp])
 
 
         # draw the particles
@@ -164,9 +175,8 @@ while(1):
 
     # Print the data of a special frame
     # nb = nb + 1
-    # if nb == 1:
-    #     print("particles", save_particles)
-    #     print("detections", save_detections)
+    # if nb == 100:
+    #     print("velocity", velocity_target)
 
 
     ### Data Association ###
