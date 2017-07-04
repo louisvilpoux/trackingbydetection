@@ -10,11 +10,13 @@ import imutils
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import scipy.spatial as ssp
+import itertools
 
 save_particles = []
 save_detections = []
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
+
 number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
@@ -24,7 +26,6 @@ video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 min_area = 100
 
 nb = 0
-val = 1000
 
 # first frame in the video
 firstFrame = None
@@ -32,12 +33,12 @@ firstFrame = None
 # dictionary of unique detections
 uniq_detection = dict()
 
-threshold_compare_hist = 0.8
-threshold_compare_dist = 100
+threshold_compare_hist = 0.85
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
+
 
 while(1):
     ret, frame = cap.read()
@@ -124,6 +125,12 @@ while(1):
 
         # print(len(uniq_detection))
 
+        # Build the matrix of the detections respecting data model
+        # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
+        # y_max_contour, group of detection
+        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group])
+
+
         # draw the particles
         # find the optimal size limit for the particles spread
         mean = [cX, cY]
@@ -134,11 +141,6 @@ while(1):
         #plt.plot(part_x, part_y, 'x')
         #plt.axis('equal')
         #plt.show()
-
-        # Build the matrix of the detections respecting data model
-        # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
-        # y_max_contour, group of detection
-        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group])
 
         # build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born,
@@ -160,19 +162,47 @@ while(1):
             save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir,[0,0]])
 
 
-        # Print the data of a special frame
-        # nb = nb + 1
-        # if nb == 20:
-        #     print("distance", dist_centers)
+    # Print the data of a special frame
+    # nb = nb + 1
+    # if nb == 1:
+    #     print("particles", save_particles)
+    #     print("detections", save_detections)
 
-    ### Update the particles ###
+
+    ### Data Association ###
 
     # Calculate the distance between each detection,particle pair.
-    # for detect in save_detections:
-    #     for particl in save_particles:
-    #         d = [detect[0],detect[1]]
-    #         p = [particl[0],particl[1]]
-            #norm_d_p = ssp.distance.euclidean(d,p)
+    # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
+    # has been found. It used the Python library itertools and make the product of the data of both lists.
+    # for particl, detect in list(itertools.product(save_particles,save_detections)):
+    #     d = [detect[1],detect[2]]
+    #     p = [particl[0],particl[1]]
+    #     norm_d_p = ssp.distance.euclidean(d,p)
+        # size_detection = 
+        # size_tracker = 
+        # sigma = 
+        # np.random.normal(0,sigma,norm_d_p)
+
+
+
+
+    ### End of Data Association ###
+
+
+
+    ### Resampling ###
+
+
+    ### End of Resampling ###
+
+
+
+    ### Propagation ###
+
+
+    ### End of the Propagation ###
+
+
 
     # not anymore the first frame
     firstFrame = 1
@@ -186,7 +216,8 @@ while(1):
     k = cv2.waitKey(30) & 0xff
     if k == 27:
         break
-    
+
+
 
 cap.release()
 cv2.destroyAllWindows()
