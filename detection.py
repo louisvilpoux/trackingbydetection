@@ -151,10 +151,6 @@ while(1):
         val_cov = min(w,h)
         cov = [[val_cov, 0], [0, val_cov]]
         part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
-        # plot the particles
-        #plt.plot(part_x, part_y, 'x')
-        #plt.axis('equal')
-        #plt.show()
 
         # build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born,
@@ -162,6 +158,8 @@ while(1):
         weight = 0
         frame_born = 0
         for i,j in zip(part_x,part_y):
+            # plot the particles
+            cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # Initialisation of the motion direction : orthogonal to the closest image borders
             dist_right = width - i
             dist_up = j
@@ -179,7 +177,7 @@ while(1):
     # Print the data of a special frame
     # nb = nb + 1
     # if nb == 100:
-    #     print("velocity", velocity_target)
+    #     print("center", to_print)
 
 
     ### Data Association ###
@@ -221,10 +219,8 @@ while(1):
     # not anymore the first frame
     firstFrame = 1
 
- 
     cv2.imshow('fgmask',fgmask)
     cv2.imshow('frame',frame)
-    #cv2.imshow('thresh',thresh)
 
     
     k = cv2.waitKey(30) & 0xff
