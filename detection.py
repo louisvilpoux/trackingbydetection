@@ -36,6 +36,8 @@ uniq_detection = dict()
 
 threshold_compare_hist = 0.85
 
+#threshold_velocity_target = TO DO
+
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
@@ -192,6 +194,7 @@ while(1):
         # size_tracker = 
         # sigma = 
         # np.random.normal(0,sigma,norm_d_p)
+        # distance_detection_motiontracker = (abs(particl[7][0]*detect[1] + particl[7][1]*detect[2]))/math.sqrt((particl[7][0]^2)+(particl[7][1]^2))
 
 
 
