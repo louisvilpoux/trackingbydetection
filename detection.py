@@ -86,13 +86,12 @@ while(1):
         hist = cv2.calcHist([frame_rgb[x:x+w, y:y+h]], [0, 1, 2], None, [8, 8, 8],[0, 256, 0, 256, 0, 256])
         hist = cv2.normalize(hist).flatten()
 
-        # if it is the first frame, add all the detections in the dictionary with their hist
-        # test for this new data model
+        # if it is the first frame, add all the detections in the dictionary with their histogram
         if firstFrame is None:
             detect_group = len(uniq_detection)
             velocity_target = 0
             timestamp = datetime.datetime.now()
-            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
+            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
             cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
@@ -127,22 +126,22 @@ while(1):
                 timestamp = ts - datetime.datetime.now()
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
-                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
+                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
                 cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
                 detect_group = len(uniq_detection)
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
-                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp]
+                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
                 cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # print(len(uniq_detection))
 
         # Build the matrix of the detections respecting data model
         # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
-        # y_max_contour, group of detection
-        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp])
+        # y_max_contour, group of detection, velocity_target, timestamp, size_target
+        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
 
 
         # draw the particles
@@ -167,10 +166,14 @@ while(1):
             dist_bottom = width - j
             distance_border = [dist_right,dist_up,dist_left,dist_bottom]
             distance_min_border = min(distance_border)
-            if distance_min_border == dist_right or distance_min_border == dist_left:
-                init_motion_dir = [0,1]
-            if distance_min_border == dist_up or distance_min_border == dist_bottom:
+            if distance_min_border == dist_right:
+                init_motion_dir = [-1,0]
+            if distance_min_border == dist_left:
                 init_motion_dir = [1,0]
+            if distance_min_border == dist_up:
+                init_motion_dir = [0,1]
+            if distance_min_border == dist_bottom:
+                init_motion_dir = [0,-1]
             save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir,[0,0]])
 
 
@@ -189,12 +192,11 @@ while(1):
     #     d = [detect[1],detect[2]]
     #     p = [particl[0],particl[1]]
     #     norm_d_p = ssp.distance.euclidean(d,p)
-        # size_detection = 
-        # size_tracker = 
-        # sigma = 
-        # np.random.normal(0,sigma,norm_d_p)
-        # distance_detection_motiontracker = (abs(particl[7][0]*detect[1] + particl[7][1]*detect[2]))/math.sqrt((particl[7][0]^2)+(particl[7][1]^2))
-
+    #     size_detection = 
+    #     size_tracker = 
+    #     sigma = 
+    #     np.random.normal(0,sigma,norm_d_p)
+    #     distance_detection_motiontracker = (abs(particl[7][0]*detect[1] + particl[7][1]*detect[2]))/math.sqrt((particl[7][0]^2)+(particl[7][1]^2))
 
 
 
