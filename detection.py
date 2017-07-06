@@ -32,6 +32,8 @@ nb = 0
 # First frame in the video
 firstFrame = None
 
+frame_number = 0
+
 # Dictionary of unique detections
 uniq_detection = dict()
 
@@ -48,6 +50,8 @@ ts = datetime.datetime.now()
 
 
 while(1):
+    frame_number = frame_number + 1
+    ts2 = datetime.datetime.now()
     ret, frame = cap.read()
     #resize because of the performance
     width = 500
@@ -123,7 +127,7 @@ while(1):
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
                 detect_group = candidate_key[index]
-                timestamp = ts - datetime.datetime.now()
+                timestamp = datetime.datetime.now() - ts
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
                 uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
@@ -152,7 +156,7 @@ while(1):
         part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
 
         # build the matrix of the particles respecting data model
-        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, frame_count_since_born,
+        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
         # initial motion direction, initial velocity
         weight = 0
         frame_born = 0
@@ -174,13 +178,8 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            save_particles.append([i,j,weight,None,None,frame_born,init_motion_dir,[0,0]])
+            save_particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
 
-
-    # Print the data of a special frame
-    # nb = nb + 1
-    # if nb == 100:
-    #     print("center", to_print)
 
 
     ### Data Association ###
@@ -212,10 +211,27 @@ while(1):
 
 
     ### Propagation ###
-
+    
+    for part in save_particles:
+        old_position = part[0]
+        old_velocity = part[7]
+        if part[4] != None:
+            noise_position = np.random.normal(0,part[4])
+        else:
+            noise_position = 0
+        noise_velocity = np.random.normal(0,1/float(frame_number))
+        timestamp = datetime.datetime.now() - ts2
+        timestamp = timestamp.total_seconds()
+        new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
+        new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
+        save_particles[save_particles.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
 
     ### End of the Propagation ###
 
+    # Print the data of a special frame
+    # nb = nb + 1
+    # if nb == 30:
+    #     print("old_position", old_position)
 
 
     # not anymore the first frame
