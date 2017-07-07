@@ -188,6 +188,7 @@ while(1):
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
             particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
+        # The particles are added to save_particles by tracker
         save_particles.append(particles)
         save_association[save_particles.index(particles)] = []
 
@@ -211,7 +212,7 @@ while(1):
                     size_tracker = prev_detect[10]
                     pos_tracker = [prev_detect[1],prev_detect[2]]
                 else:
-                    # TO VERIFY
+                    # TO VERIFY BECAUSE SEEMS STRANGE
                     # size_tracker = size_detection
                     # pos_tracker = d
                     size_tracker = size_detection + 0.001
@@ -231,6 +232,14 @@ while(1):
             if matching_score > threshold_matching_score:
                 index_tracker = save_particles.index(tracker)
                 save_association[index_tracker].append([tracker,detect,matching_score])
+        # From all the associations available, pick the assocation that has the best score
+        for key_asso, val_asso in save_association.iteritems():
+            max_val = 0
+            if val_asso != []:
+                for val_tripl in val_asso:
+                    if val_tripl[2] > max_val:
+                        max_val = val_tripl[2]
+                save_association[key_asso] = val_tripl
 
 
 
@@ -265,9 +274,9 @@ while(1):
     ### End of the Propagation ###
 
     # Print the data of a special frame
-    nb = nb + 1
-    if nb == 30:
-        print("save_association", save_association)
+    # nb = nb + 1
+    # if nb == 10:
+    #     print("save_association", save_association)
 
 
     # not anymore the first frame
