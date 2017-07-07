@@ -16,6 +16,7 @@ import math
 
 save_particles = []
 save_detections = []
+save_association = dict()
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
@@ -42,7 +43,11 @@ uniq_detection = dict()
 
 threshold_compare_hist = 0.85
 
-#threshold_velocity_target = TO DO
+# TO DEFINE
+threshold_velocity_target = 1000
+
+# TO DEFINE
+threshold_matching_score = 0
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
@@ -147,8 +152,8 @@ while(1):
 
         # Build the matrix of the detections respecting data model
         # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
-        # y_max_contour, group of detection, velocity_target, timestamp, size_target
-        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+        # y_max_contour, group of detection, velocity_target, timestamp, size_target, index
+        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,len(save_detections)])
 
 
         # draw the particles
@@ -184,6 +189,7 @@ while(1):
                 init_motion_dir = [0,-1]
             particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
         save_particles.append(particles)
+        save_association[save_particles.index(particles)] = []
 
 
 
@@ -192,36 +198,39 @@ while(1):
     # Calculate the distance between each detection,tracker pair.
     # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
     # has been found. It used the Python library itertools and make the product of the data of both lists.
-    if save_detections is True:
-        max_score = None
-        save_association = []
+    if save_detections != []:
         # change the for loop to iterate over the tracker and not the particles
         for tracker, detect in list(itertools.product(save_particles,save_detections)):
             d = [detect[1],detect[2]]
             size_detection = detect[10]
             group = detect[7]
+            index_prev_detect = 0
+            index_detect = detect[11]
             for prev_detect in save_detections:
-                if prev_detect[7] == group and save_detections.index(prev_detect) < save_detections.index(detect):
+                if prev_detect[7] == group and index_prev_detect < index_detect:
                     size_tracker = prev_detect[10]
                     pos_tracker = [prev_detect[1],prev_detect[2]]
                 else:
                     # TO VERIFY
-                    size_tracker = size_detection
-                    pos_tracker = d
+                    # size_tracker = size_detection
+                    # pos_tracker = d
+                    size_tracker = size_detection + 0.001
+                    pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
+                index_prev_detect = index_prev_detect + 1
             velocity = detect[8]
             agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
             if abs(velocity) < threshold_velocity_target:
                 gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
             else:
-                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]^2)+(tracker[0][6][1]^2))
+                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
                 gating = agreement_target_detection * distance_detection_motiontracker
             sum_part_tracker = 0
             for part in tracker:
-                sum_part_tracker = sump_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+                sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
             matching_score = gating * (1 + alpha * sum_part_tracker)
-            if matching_score > max_score:
-                max_score = matching_score
-                save_association = [tracker,detect]
+            if matching_score > threshold_matching_score:
+                index_tracker = save_particles.index(tracker)
+                save_association[index_tracker].append([tracker,detect,matching_score])
 
 
 
@@ -256,9 +265,9 @@ while(1):
     ### End of the Propagation ###
 
     # Print the data of a special frame
-    # nb = nb + 1
-    # if nb == 30:
-    #     print("old_position", old_position)
+    nb = nb + 1
+    if nb == 30:
+        print("save_association", save_association)
 
 
     # not anymore the first frame
