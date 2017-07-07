@@ -34,6 +34,9 @@ firstFrame = None
 
 frame_number = 0
 
+# Parameters in the formulas
+alpha = 2
+
 # Dictionary of unique detections
 uniq_detection = dict()
 
@@ -160,6 +163,7 @@ while(1):
         # initial motion direction, initial velocity
         weight = 0
         frame_born = 0
+        particles = []
         for i,j in zip(part_x,part_y):
             # plot the particles
             cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
@@ -178,24 +182,46 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            save_particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
+        save_particles.append(particles)
 
 
 
     ### Data Association ###
 
-    # Calculate the distance between each detection,particle pair.
+    # Calculate the distance between each detection,tracker pair.
     # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
     # has been found. It used the Python library itertools and make the product of the data of both lists.
-    # for particl, detect in list(itertools.product(save_particles,save_detections)):
-    #     d = [detect[1],detect[2]]
-    #     p = [particl[0],particl[1]]
-    #     norm_d_p = ssp.distance.euclidean(d,p)
-    #     size_detection = 
-    #     size_tracker = 
-    #     sigma = 
-    #     np.random.normal(0,sigma,norm_d_p)
-    #     distance_detection_motiontracker = (abs(particl[7][0]*detect[1] + particl[7][1]*detect[2]))/math.sqrt((particl[7][0]^2)+(particl[7][1]^2))
+    if save_detections is True:
+        max_score = None
+        save_association = []
+        # change the for loop to iterate over the tracker and not the particles
+        for tracker, detect in list(itertools.product(save_particles,save_detections)):
+            d = [detect[1],detect[2]]
+            size_detection = detect[10]
+            group = detect[7]
+            for prev_detect in save_detections:
+                if prev_detect[7] == group and save_detections.index(prev_detect) < save_detections.index(detect):
+                    size_tracker = prev_detect[10]
+                    pos_tracker = [prev_detect[1],prev_detect[2]]
+                else:
+                    # TO VERIFY
+                    size_tracker = size_detection
+                    pos_tracker = d
+            velocity = detect[8]
+            agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
+            if abs(velocity) < threshold_velocity_target:
+                gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
+            else:
+                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]^2)+(tracker[0][6][1]^2))
+                gating = agreement_target_detection * distance_detection_motiontracker
+            sum_part_tracker = 0
+            for part in tracker:
+                sum_part_tracker = sump_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+            matching_score = gating * (1 + alpha * sum_part_tracker)
+            if matching_score > max_score:
+                max_score = matching_score
+                save_association = [tracker,detect]
 
 
 
@@ -211,20 +237,21 @@ while(1):
 
 
     ### Propagation ###
-    
-    for part in save_particles:
-        old_position = part[0]
-        old_velocity = part[7]
-        if part[4] != None:
-            noise_position = np.random.normal(0,part[4])
-        else:
-            noise_position = 0
-        noise_velocity = np.random.normal(0,1/float(frame_number))
-        timestamp = datetime.datetime.now() - ts2
-        timestamp = timestamp.total_seconds()
-        new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
-        new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-        save_particles[save_particles.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
+
+    for track in save_particles:
+        for part in track:
+            old_position = part[0]
+            old_velocity = part[7]
+            if part[4] != None:
+                noise_position = np.random.normal(0,part[4])
+            else:
+                noise_position = 0
+            noise_velocity = np.random.normal(0,1/float(frame_number))
+            timestamp = datetime.datetime.now() - ts2
+            timestamp = timestamp.total_seconds()
+            new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
+            new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
+            track[track.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
 
     ### End of the Propagation ###
 
