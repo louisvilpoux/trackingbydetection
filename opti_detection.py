@@ -17,6 +17,8 @@ import math
 save_particles = []
 save_detections = []
 save_association = dict()
+dict_detection = dict()
+dict_particles = dict()
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
@@ -34,12 +36,10 @@ nb = 0
 firstFrame = None
 
 frame_number = 0
+frame_number_delete = 5
 
 # Parameters in the formulas
 alpha = 2
-
-# Dictionary of unique detections
-uniq_detection = dict()
 
 threshold_compare_hist = 0.85
 
@@ -61,7 +61,7 @@ while(1):
     frame_number = frame_number + 1
     ts2 = datetime.datetime.now()
     ret, frame = cap.read()
-    #resize because of the performance
+    # Resize because of the performance
     width = 500
     frame = imutils.resize(frame, width=width)
 
@@ -75,15 +75,15 @@ while(1):
     (cnts, _) = cv2.findContours(dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for c in cnts:
-		# if the contour is too small, ignore it
+        # If the contour is too small, ignore it
         if cv2.contourArea(c) < min_area:
             continue
  
-		# compute the bounding box for the contour, draw it on the frame
+        # Compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        # compute the center of the contour for each detection. cX and cY are the coords of the detection center
+        # Compute the center of the contour for each detection. cX and cY are the coords of the detection center
         M = cv2.moments(c)
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
@@ -91,20 +91,21 @@ while(1):
         #cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Compute the descriptor : histogram of the color of the detection
-        # first convert the detection into a RGB image : OpenCV stores images in BGR format rather than RGB ; 
+        # First convert the detection into a RGB image : OpenCV stores images in BGR format rather than RGB ; 
         # matplotlib is going to be used to display the results and matplotlib assumes the image is in RGB format
-        # second the histogram is computed and then it is normalized
+        # Second the histogram is computed and then it is normalized
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         hist = cv2.calcHist([frame_rgb[x:x+w, y:y+h]], [0, 1, 2], None, [8, 8, 8],[0, 256, 0, 256, 0, 256])
         hist = cv2.normalize(hist).flatten()
 
-        # if it is the first frame, add all the detections in the dictionary with their histogram
+        # If it is the first frame, add all the detections in the dictionary with their histogram
         if firstFrame is None:
-            detect_group = len(uniq_detection)
+            detect_group = len(dict_detection)
             velocity_target = 0
             timestamp = datetime.datetime.now()
-            uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-            cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            dict_detection[len(dict_detection)] = []
+            dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+            cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
         # Try first if it is not the first frame and if we already have detect some objects.
@@ -124,36 +125,37 @@ while(1):
         candidate_dist = []
         if firstFrame is not None:
             used = False
-            if len(uniq_detection) != 0:
-                for key_detec, val_detec in uniq_detection.iteritems():
-                    if cv2.compareHist(hist,val_detec[0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
-                        dist_centers = ssp.distance.cdist([(val_detec[1],val_detec[2])],[(cX,cY)],'euclidean')[0][0]
-                        used = True
-                        candidate_key.append(key_detec)
-                        candidate_dist.append(dist_centers)
-            # we must update a detector
+            if len(dict_detection) != 0:
+                for key_detec, val_detec in dict_detection.iteritems():
+                    if len(val_detec) != 0:
+                        if cv2.compareHist(hist,val_detec[len(val_detec)-1][0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
+                            dist_centers = ssp.distance.cdist([(val_detec[len(val_detec)-1][1],val_detec[len(val_detec)-1][2])],[(cX,cY)],'euclidean')[0][0]
+                            used = True
+                            candidate_key.append(key_detec)
+                            candidate_dist.append(dist_centers)
+            # We must update a detector
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
                 detect_group = candidate_key[index]
                 timestamp = datetime.datetime.now() - ts
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
-                uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
+                dict_detection[candidate_key[index]].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
                 cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            # we must add a new detector
+            # We must add a new detector
             else:
-                detect_group = len(uniq_detection)
+                detect_group = len(dict_detection)
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
-                uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-                cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                dict_detection[len(dict_detection)] = []
+                dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+                cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-        # print(len(uniq_detection))
 
         # Build the matrix of the detections respecting data model
         # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
         # y_max_contour, group of detection, velocity_target, timestamp, size_target, index
-        save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,len(save_detections)])
+        #save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,len(save_detections)])
 
 
         # draw the particles
@@ -165,12 +167,12 @@ while(1):
 
         # build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
-        # initial motion direction, initial velocity
+        # initial motion direction, initial velocity, future key in the dict
         weight = 0
-        frame_born = 0
+        frame_born = frame_number
         particles = []
         for i,j in zip(part_x,part_y):
-            # plot the particles
+            # Plot the particles
             cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # Initialisation of the motion direction : orthogonal to the closest image borders
             dist_right = width - i
@@ -187,10 +189,10 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0]])
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particles)])
         # The particles are added to save_particles by tracker
-        save_particles.append(particles)
-        save_association[save_particles.index(particles)] = []
+        dict_particles[len(dict_particles)] = particles
+        #save_association[save_particles.index(particles)] = []
 
 
 
@@ -199,48 +201,48 @@ while(1):
     # Calculate the distance between each detection,tracker pair.
     # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
     # has been found. It used the Python library itertools and make the product of the data of both lists.
-    if save_detections != []:
-        # change the for loop to iterate over the tracker and not the particles
-        for tracker, detect in list(itertools.product(save_particles,save_detections)):
-            d = [detect[1],detect[2]]
-            size_detection = detect[10]
-            group = detect[7]
-            index_prev_detect = 0
-            index_detect = detect[11]
-            for prev_detect in save_detections:
-                if prev_detect[7] == group and index_prev_detect < index_detect:
-                    size_tracker = prev_detect[10]
-                    pos_tracker = [prev_detect[1],prev_detect[2]]
-                else:
-                    # TO VERIFY BECAUSE SEEMS STRANGE
-                    # size_tracker = size_detection
-                    # pos_tracker = d
-                    size_tracker = size_detection + 0.001
-                    pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
-                index_prev_detect = index_prev_detect + 1
-            velocity = detect[8]
-            agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
-            if abs(velocity) < threshold_velocity_target:
-                gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
-            else:
-                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                gating = agreement_target_detection * distance_detection_motiontracker
-            sum_part_tracker = 0
-            for part in tracker:
-                sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
-            matching_score = gating * (1 + alpha * sum_part_tracker)
-            if matching_score > threshold_matching_score:
-                index_tracker = save_particles.index(tracker)
-                save_association[index_tracker].append([tracker,detect,matching_score])
-        # From all the associations available, pick the assocation that has the best score
-        # TO BE CORRECTED
-        for key_asso, val_asso in save_association.iteritems():
-            max_val = 0
-            if val_asso != []:
-                for val_tripl in val_asso:
-                    if val_tripl[2] > max_val:
-                        max_val = val_tripl[2]
-                save_association[key_asso] = val_tripl
+    # if save_detections != []:
+    #     # change the for loop to iterate over the tracker and not the particles
+    #     for tracker, detect in list(itertools.product(save_particles,save_detections)):
+    #         d = [detect[1],detect[2]]
+    #         size_detection = detect[10]
+    #         group = detect[7]
+    #         index_prev_detect = 0
+    #         index_detect = detect[11]
+    #         for prev_detect in save_detections:
+    #             if prev_detect[7] == group and index_prev_detect < index_detect:
+    #                 size_tracker = prev_detect[10]
+    #                 pos_tracker = [prev_detect[1],prev_detect[2]]
+    #             else:
+    #                 # TO VERIFY BECAUSE SEEMS STRANGE
+    #                 # size_tracker = size_detection
+    #                 # pos_tracker = d
+    #                 size_tracker = size_detection + 0.001
+    #                 pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
+    #             index_prev_detect = index_prev_detect + 1
+    #         velocity = detect[8]
+    #         agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
+    #         if abs(velocity) < threshold_velocity_target:
+    #             gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
+    #         else:
+    #             distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
+    #             gating = agreement_target_detection * distance_detection_motiontracker
+    #         sum_part_tracker = 0
+    #         for part in tracker:
+    #             sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+    #         matching_score = gating * (1 + alpha * sum_part_tracker)
+    #         if matching_score > threshold_matching_score:
+    #             index_tracker = save_particles.index(tracker)
+    #             save_association[index_tracker].append([tracker,detect,matching_score])
+    #     # From all the associations available, pick the assocation that has the best score
+    #     # TO BE CORRECTED
+    #     for key_asso, val_asso in save_association.iteritems():
+    #         max_val = 0
+    #         if val_asso != []:
+    #             for val_tripl in val_asso:
+    #                 if val_tripl[2] > max_val:
+    #                     max_val = val_tripl[2]
+    #             save_association[key_asso] = val_tripl
 
 
 
@@ -257,22 +259,44 @@ while(1):
 
     ### Propagation ###
 
-    for track in save_particles:
-        for part in track:
-            old_position = part[0]
-            old_velocity = part[7]
-            if part[4] != None:
-                noise_position = np.random.normal(0,part[4])
-            else:
-                noise_position = 0
-            noise_velocity = np.random.normal(0,1/float(frame_number))
-            timestamp = datetime.datetime.now() - ts2
-            timestamp = timestamp.total_seconds()
-            new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
-            new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-            track[track.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
+    copy_dict_particles = dict()
+    for part in list(itertools.chain.from_iterable(dict_particles.values())):
+        old_position = part[0]
+        old_velocity = part[7]
+        key = part[8]
+        if part[4] != None:
+            noise_position = np.random.normal(0,part[4])
+        else:
+            noise_position = 0
+        noise_velocity = np.random.normal(0,1/float(frame_number))
+        timestamp = datetime.datetime.now() - ts2
+        timestamp = timestamp.total_seconds()
+        new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
+        new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
+        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key]
+        if copy_dict_particles.has_key(key):
+            copy_dict_particles[key].append(new_part)
+        else:
+            copy_dict_particles[key] = []
+            copy_dict_particles[key].append(new_part)
+    dict_particles = dict()
+    dict_particles = copy_dict_particles
+
 
     ### End of the Propagation ###
+
+
+
+    ### Delete not associated particles ###
+
+    for part in list(itertools.chain.from_iterable(dict_particles.values())):
+        if frame_number - part[5] > frame_number_delete:
+            dict_particles[part[8]].remove(part)
+
+    ### End of Delete not associated particles ###
+
+
+
 
     # Print the data of a special frame
     # nb = nb + 1
