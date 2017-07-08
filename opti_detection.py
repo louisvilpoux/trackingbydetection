@@ -290,7 +290,7 @@ while(1):
     ### Delete not associated particles ###
 
     for part in list(itertools.chain.from_iterable(dict_particles.values())):
-        if frame_number - part[5] > frame_number_delete:
+        if frame_number - part[5] > frame_number_delete and part[2] == None:
             dict_particles[part[8]].remove(part)
 
     ### End of Delete not associated particles ###
