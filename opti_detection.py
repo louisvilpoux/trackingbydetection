@@ -18,7 +18,7 @@ save_particles = []
 save_detections = []
 save_association = dict()
 dict_detection = dict()
-dict_particles = dict()
+dict_particle = dict()
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
@@ -88,7 +88,6 @@ while(1):
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
         cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
-        #cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Compute the descriptor : histogram of the color of the detection
         # First convert the detection into a RGB image : OpenCV stores images in BGR format rather than RGB ; 
@@ -134,6 +133,9 @@ while(1):
                             candidate_key.append(key_detec)
                             candidate_dist.append(dist_centers)
             # We must update a detector
+            # Build the matrix of the detections respecting data model
+            # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
+            # y_max_contour, group of detection, velocity_target, timestamp, size_target, index
             if used == True:
                 index = candidate_dist.index(min(candidate_dist))
                 detect_group = candidate_key[index]
@@ -152,12 +154,6 @@ while(1):
                 cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
 
-        # Build the matrix of the detections respecting data model
-        # Detection : histogram of colors, x_center, y_center, x_min_contour, y_min_contour, x_max_contour, 
-        # y_max_contour, group of detection, velocity_target, timestamp, size_target, index
-        #save_detections.append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,len(save_detections)])
-
-
         # draw the particles
         # find the optimal size limit for the particles spread
         mean = [cX, cY]
@@ -165,7 +161,7 @@ while(1):
         cov = [[val_cov, 0], [0, val_cov]]
         part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
 
-        # build the matrix of the particles respecting data model
+        # Build the matrix of the particles respecting data model
         # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
         # initial motion direction, initial velocity, future key in the dict
         weight = 0
@@ -189,11 +185,9 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particles)])
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
         # The particles are added to save_particles by tracker
-        dict_particles[len(dict_particles)] = particles
-        #save_association[save_particles.index(particles)] = []
-
+        dict_particle[len(dict_particle)] = particles
 
 
     ### Data Association ###
@@ -201,49 +195,47 @@ while(1):
     # Calculate the distance between each detection,tracker pair.
     # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
     # has been found. It used the Python library itertools and make the product of the data of both lists.
-    # if save_detections != []:
-    #     # change the for loop to iterate over the tracker and not the particles
-    #     for tracker, detect in list(itertools.product(save_particles,save_detections)):
-    #         d = [detect[1],detect[2]]
-    #         size_detection = detect[10]
-    #         group = detect[7]
-    #         index_prev_detect = 0
-    #         index_detect = detect[11]
-    #         for prev_detect in save_detections:
-    #             if prev_detect[7] == group and index_prev_detect < index_detect:
-    #                 size_tracker = prev_detect[10]
-    #                 pos_tracker = [prev_detect[1],prev_detect[2]]
-    #             else:
-    #                 # TO VERIFY BECAUSE SEEMS STRANGE
-    #                 # size_tracker = size_detection
-    #                 # pos_tracker = d
-    #                 size_tracker = size_detection + 0.001
-    #                 pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
-    #             index_prev_detect = index_prev_detect + 1
-    #         velocity = detect[8]
-    #         agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
-    #         if abs(velocity) < threshold_velocity_target:
-    #             gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
-    #         else:
-    #             distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-    #             gating = agreement_target_detection * distance_detection_motiontracker
-    #         sum_part_tracker = 0
-    #         for part in tracker:
-    #             sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
-    #         matching_score = gating * (1 + alpha * sum_part_tracker)
-    #         if matching_score > threshold_matching_score:
-    #             index_tracker = save_particles.index(tracker)
-    #             save_association[index_tracker].append([tracker,detect,matching_score])
-    #     # From all the associations available, pick the assocation that has the best score
-    #     # TO BE CORRECTED
-    #     for key_asso, val_asso in save_association.iteritems():
-    #         max_val = 0
-    #         if val_asso != []:
-    #             for val_tripl in val_asso:
-    #                 if val_tripl[2] > max_val:
-    #                     max_val = val_tripl[2]
-    #             save_association[key_asso] = val_tripl
-
+    # From all the associations available, pick the assocation that has the best score (greater than the threshold)
+    #if save_detections != []:
+    if dict_detection != dict():
+        # The loop iterate over the trackers and not the particles
+        prev_detect = None
+        for tracker,detect in list(itertools.product(dict_particle.values(),list(itertools.chain.from_iterable(dict_detection.values())))):
+            d = [detect[1],detect[2]]
+            size_detection = detect[10]
+            group = detect[7]
+            if prev_detect != None and prev_detect[7] == group:
+                size_tracker = prev_detect[10]
+                pos_tracker = [prev_detect[1],prev_detect[2]]
+            else:
+                # TO VERIFY BECAUSE SEEMS STRANGE
+                # size_tracker = size_detection
+                # pos_tracker = d
+                size_tracker = size_detection + 0.001
+                pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
+                #index_prev_detect = index_prev_detect + 1
+            velocity = detect[8]
+            agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
+            if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
+                gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
+            else:
+                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
+                gating = agreement_target_detection * distance_detection_motiontracker
+            sum_part_tracker = 0
+            for part in tracker:
+                sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+            matching_score = gating * (1 + alpha * sum_part_tracker)
+            if matching_score > threshold_matching_score:
+                index_tracker = tracker[0][8]
+                if save_association.has_key(index_tracker):
+                    if matching_score > save_association[index_tracker][0][2]:
+                        # TO DO : remplacer par la valeur existante
+                        save_association[index_tracker] = []
+                        save_association[index_tracker].append([tracker,detect,matching_score])
+                else:
+                    save_association[index_tracker] = []
+                    save_association[index_tracker].append([tracker,detect,matching_score])
+            prev_detect = detect
 
 
     ### End of Data Association ###
@@ -259,8 +251,8 @@ while(1):
 
     ### Propagation ###
 
-    copy_dict_particles = dict()
-    for part in list(itertools.chain.from_iterable(dict_particles.values())):
+    copy_dict_particle = dict()
+    for part in list(itertools.chain.from_iterable(dict_particle.values())):
         old_position = part[0]
         old_velocity = part[7]
         key = part[8]
@@ -274,26 +266,28 @@ while(1):
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
         new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key]
-        if copy_dict_particles.has_key(key):
-            copy_dict_particles[key].append(new_part)
+        if copy_dict_particle.has_key(key):
+            copy_dict_particle[key].append(new_part)
         else:
-            copy_dict_particles[key] = []
-            copy_dict_particles[key].append(new_part)
-    dict_particles = dict()
-    dict_particles = copy_dict_particles
-
+            copy_dict_particle[key] = []
+            copy_dict_particle[key].append(new_part)
+    dict_particle = dict()
+    dict_particle = copy_dict_particle
 
     ### End of the Propagation ###
 
 
 
-    ### Delete not associated particles ###
+    ### Delete not associated Particles ###
 
-    for part in list(itertools.chain.from_iterable(dict_particles.values())):
+    for part in list(itertools.chain.from_iterable(dict_particle.values())):
         if frame_number - part[5] > frame_number_delete and part[2] == None:
-            dict_particles[part[8]].remove(part)
+            idx = part[8]
+            dict_particle[idx].remove(part)
+            if len(dict_particle[idx]) == 0:
+                dict_particle.pop(idx,None)
 
-    ### End of Delete not associated particles ###
+    ### End of Delete not associated Particles ###
 
 
 
