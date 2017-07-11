@@ -40,6 +40,9 @@ frame_number_delete = 5
 
 # Parameters in the formulas
 alpha = 2
+beta = 20
+gamma = 2
+etha = 1
 
 threshold_compare_hist = 0.85
 
@@ -213,7 +216,6 @@ while(1):
                 # pos_tracker = d
                 size_tracker = size_detection + 0.001
                 pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
-                #index_prev_detect = index_prev_detect + 1
             velocity = detect[8]
             agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
             if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
@@ -229,7 +231,6 @@ while(1):
                 index_tracker = tracker[0][8]
                 if save_association.has_key(index_tracker):
                     if matching_score > save_association[index_tracker][0][2]:
-                        # TO DO : remplacer par la valeur existante
                         save_association[index_tracker] = []
                         save_association[index_tracker].append([tracker,detect,matching_score])
                 else:
@@ -237,12 +238,25 @@ while(1):
                     save_association[index_tracker].append([tracker,detect,matching_score])
             prev_detect = detect
 
-
     ### End of Data Association ###
 
 
 
+    ### Observation Model ###
+
+    for partic in list(itertools.chain.from_iterable(dict_particle.values())):
+        key = partic[8]
+        if save_association.has_key(key):
+            coord_part = partic[0]
+            coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
+            detection_term = beta * 1 * np.random.normal(0,abs(ssp.distance.euclidean(coord_part,coord_detec)))
+
+    ### End of the Observation Model ###
+
+
+
     ### Resampling ###
+
 
 
     ### End of Resampling ###
