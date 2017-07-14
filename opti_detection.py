@@ -78,6 +78,13 @@ while(1):
     
     (cnts, _) = cv2.findContours(dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # Limit of the zone for the instantiation of the new trackers
+    x_limit = width/8
+    y_limit = width/8
+    x_w_limit = 9*width/10
+    y_h_limit = 7*width/10
+    cv2.rectangle(frame, (x_limit, y_limit), (x_w_limit, y_h_limit), (0, 255, 255), 2)
+
     for c in cnts:
         # If the contour is too small, ignore it
         if cv2.contourArea(c) < min_area:
@@ -190,10 +197,12 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+            if i > x_limit and i < x_w_limit and j > y_limit and j < y_h_limit:
+            	particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
         # The particles are added to save_particles by tracker
         #dict_particle[len(dict_particle)] = particles
-        to_add_to_dict_particle[len(dict_particle)] = particles
+        if particles != []:
+        	to_add_to_dict_particle[len(dict_particle)] = particles
 
 
 
@@ -236,32 +245,28 @@ while(1):
             if prev_detect != None and prev_detect[7] == group:
                 size_tracker = prev_detect[10]
                 pos_tracker = [prev_detect[1],prev_detect[2]]
-            else:
-                # TO VERIFY BECAUSE SEEMS STRANGE
-                # size_tracker = size_detection
-                # pos_tracker = d
-                size_tracker = size_detection + 0.001
-                pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
-            velocity = detect[8]
-            agreement_target_detection = normal_distrib1.cdf((size_tracker - size_detection) / float(size_tracker))
-            if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
-                gating = agreement_target_detection * normal_distrib1.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
-            else:
-                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                gating = agreement_target_detection * normal_distrib1.cdf(distance_detection_motiontracker)
-            sum_part_tracker = 0
-            for part in tracker:
-                sum_part_tracker = sum_part_tracker + normal_distrib1.cdf(ssp.distance.euclidean(d,part[0]))
-            matching_score = gating * (1 + alpha * sum_part_tracker)
-            if matching_score > threshold_matching_score:
-                index_tracker = tracker[0][8]
-                if save_association.has_key(index_tracker):
-                    if matching_score > save_association[index_tracker][0][2]:
+                velocity = detect[8]
+                agreement_target_detection = normal_distrib1.cdf((size_tracker - size_detection) / float(size_tracker))
+                if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
+                    gating = agreement_target_detection * normal_distrib1.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
+                else:
+                    distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
+                    gating = agreement_target_detection * normal_distrib1.cdf(distance_detection_motiontracker)
+                sum_part_tracker = 0
+                for part in tracker:
+                    sum_part_tracker = sum_part_tracker + normal_distrib1.cdf(ssp.distance.euclidean(d,part[0]))
+                matching_score = gating * (1 + alpha * sum_part_tracker)
+                if matching_score > threshold_matching_score:
+                    index_tracker = tracker[0][8]
+                    if save_association.has_key(index_tracker):
+                        if matching_score > save_association[index_tracker][0][2]:
+                            save_association[index_tracker] = []
+                            save_association[index_tracker].append([tracker,detect,matching_score])
+                        else:
+							continue
+                    else:
                         save_association[index_tracker] = []
                         save_association[index_tracker].append([tracker,detect,matching_score])
-                else:
-                    save_association[index_tracker] = []
-                    save_association[index_tracker].append([tracker,detect,matching_score])
             prev_detect = detect
 
     ### End of Data Association ###
@@ -307,11 +312,12 @@ while(1):
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
         new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key]
-        if copy_dict_particle.has_key(key):
-            copy_dict_particle[key].append(new_part)
-        else:
-            copy_dict_particle[key] = []
-            copy_dict_particle[key].append(new_part)
+        if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
+	        if copy_dict_particle.has_key(key):
+	            copy_dict_particle[key].append(new_part)
+	        else:
+	            copy_dict_particle[key] = []
+	            copy_dict_particle[key].append(new_part)
     dict_particle = dict()
     dict_particle = copy_dict_particle
 
