@@ -10,6 +10,7 @@ import imutils
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import scipy.spatial as ssp
+import scipy.stats as ss
 import itertools
 import datetime
 import math
@@ -226,6 +227,8 @@ while(1):
     if dict_detection != dict():
         # The loop iterate over the trackers and not the particles
         prev_detect = None
+        standard_dev = 0.5
+        normal_distrib1 = ss.norm(0,standard_dev)
         for tracker,detect in list(itertools.product(dict_particle.values(),list(itertools.chain.from_iterable(dict_detection.values())))):
             d = [detect[1],detect[2]]
             size_detection = detect[10]
@@ -240,15 +243,15 @@ while(1):
                 size_tracker = size_detection + 0.001
                 pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
             velocity = detect[8]
-            agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
+            agreement_target_detection = normal_distrib1.cdf((size_tracker - size_detection) / float(size_tracker))
             if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
-                gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
+                gating = agreement_target_detection * normal_distrib1.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
             else:
                 distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                gating = agreement_target_detection * distance_detection_motiontracker
+                gating = agreement_target_detection * normal_distrib1.cdf(distance_detection_motiontracker)
             sum_part_tracker = 0
             for part in tracker:
-                sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+                sum_part_tracker = sum_part_tracker + normal_distrib1.cdf(ssp.distance.euclidean(d,part[0]))
             matching_score = gating * (1 + alpha * sum_part_tracker)
             if matching_score > threshold_matching_score:
                 index_tracker = tracker[0][8]
@@ -265,13 +268,15 @@ while(1):
 
 
     ### Bootstrap Filter : Observation Model ###
-
+    # Choose this parameter
+    standard_dev = 0.5
+    normal_distrib2 = ss.norm(0,standard_dev)
     for partic in list(itertools.chain.from_iterable(dict_particle.values())):
         key = partic[8]
         if save_association.has_key(key):
             coord_part = partic[0]
             coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
-            detection_term = beta * 1 * np.random.normal(0,abs(ssp.distance.euclidean(coord_part,coord_detec)))
+            detection_term = beta * 1 * normal_distrib2.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
 
     ### End of the Bootstrap Filter : Observation Model ###
 
@@ -322,8 +327,6 @@ while(1):
     ## End of the Instantiation of the new Trackers ##
 
 
-
-#after step 1, je fais toutes les actions sur les particules : resampling propagation
 
 
     # Print the data of a special frame
