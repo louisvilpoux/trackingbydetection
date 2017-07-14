@@ -170,6 +170,7 @@ while(1):
         weight = 0
         frame_born = frame_number
         particles = []
+        to_add_to_dict_particle = dict()
         for i,j in zip(part_x,part_y):
             # Plot the particles
             cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
@@ -190,7 +191,29 @@ while(1):
                 init_motion_dir = [0,-1]
             particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
         # The particles are added to save_particles by tracker
-        dict_particle[len(dict_particle)] = particles
+        #dict_particle[len(dict_particle)] = particles
+        to_add_to_dict_particle[len(dict_particle)] = particles
+
+
+
+    ### Delete not associated Particles ###
+
+    for part in list(itertools.chain.from_iterable(dict_particle.values())):
+        if frame_number - part[5] > frame_number_delete and part[2] == None:
+            idx = part[8]
+            dict_particle[idx].remove(part)
+            if len(dict_particle[idx]) == 0:
+                dict_particle.pop(idx,None)
+
+    ### End of Delete not associated Particles ###
+
+
+
+    ### Delete out of view Particles ###
+
+
+    ### End of Delete out of view Particles ###
+
 
 
     ### Data Association ###
@@ -241,8 +264,7 @@ while(1):
     ### End of Data Association ###
 
 
-
-    ### Observation Model ###
+    ### Bootstrap Filter : Observation Model ###
 
     for partic in list(itertools.chain.from_iterable(dict_particle.values())):
         key = partic[8]
@@ -251,7 +273,7 @@ while(1):
             coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
             detection_term = beta * 1 * np.random.normal(0,abs(ssp.distance.euclidean(coord_part,coord_detec)))
 
-    ### End of the Observation Model ###
+    ### End of the Bootstrap Filter : Observation Model ###
 
 
 
@@ -292,18 +314,16 @@ while(1):
 
 
 
-    ### Delete not associated Particles ###
+   ## Instantiation of the new trackers ##
 
-    for part in list(itertools.chain.from_iterable(dict_particle.values())):
-        if frame_number - part[5] > frame_number_delete and part[2] == None:
-            idx = part[8]
-            dict_particle[idx].remove(part)
-            if len(dict_particle[idx]) == 0:
-                dict_particle.pop(idx,None)
+    for key_track, track in to_add_to_dict_particle.iteritems():
+        dict_particle[key_track] = track
 
-    ### End of Delete not associated Particles ###
+    ## End of the Instantiation of the new Trackers ##
 
 
+
+#after step 1, je fais toutes les actions sur les particules : resampling propagation
 
 
     # Print the data of a special frame
