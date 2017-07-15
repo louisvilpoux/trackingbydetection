@@ -173,15 +173,13 @@ while(1):
         part_x, part_y = np.random.multivariate_normal(mean, cov, number_particles).T
 
         # Build the matrix of the particles respecting data model
-        # particle : x_ord, y_ord, weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
+        # particle : [x_ord, y_ord], weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
         # initial motion direction, initial velocity, future key in the dict
         weight = 0
         frame_born = frame_number
         particles = []
         to_add_to_dict_particle = dict()
         for i,j in zip(part_x,part_y):
-            # Plot the particles
-            cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # Initialisation of the motion direction : orthogonal to the closest image borders
             dist_right = width - i
             dist_up = j
@@ -197,8 +195,14 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            if i > x_limit and i < x_w_limit and j > y_limit and j < y_h_limit:
-            	particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+            if (i < x_limit or i > x_w_limit or j < y_limit or j > y_h_limit) and frame_number > 2:
+                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+	            # Plot the particles
+                cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
+            if frame_number <= 2:
+                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+	            # Plot the particles
+                cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
         # The particles are added to save_particles by tracker
         #dict_particle[len(dict_particle)] = particles
         if particles != []:
@@ -216,13 +220,6 @@ while(1):
                 dict_particle.pop(idx,None)
 
     ### End of Delete not associated Particles ###
-
-
-
-    ### Delete out of view Particles ###
-
-
-    ### End of Delete out of view Particles ###
 
 
 
@@ -272,6 +269,7 @@ while(1):
     ### End of Data Association ###
 
 
+
     ### Bootstrap Filter : Observation Model ###
     # Choose this parameter
     standard_dev = 0.5
@@ -282,6 +280,10 @@ while(1):
             coord_part = partic[0]
             coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
             detection_term = beta * 1 * normal_distrib2.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
+            # Update the data obtained from the association
+            partic[2] = save_association[key][0][1][1]
+            partic[3] = save_association[key][0][1][2]
+            partic[4] = save_association[key][0][1][10]
 
     ### End of the Bootstrap Filter : Observation Model ###
 
