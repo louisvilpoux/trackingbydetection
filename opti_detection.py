@@ -14,10 +14,10 @@ import scipy.stats as ss
 import itertools
 import datetime
 import math
+import random
 
 save_particles = []
 save_detections = []
-save_association = dict()
 dict_detection = dict()
 dict_particle = dict()
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
@@ -62,6 +62,7 @@ ts = datetime.datetime.now()
 
 
 while(1):
+    save_association = dict()
     frame_number = frame_number + 1
     ts2 = datetime.datetime.now()
     ret, frame = cap.read()
@@ -175,7 +176,8 @@ while(1):
         # Build the matrix of the particles respecting data model
         # particle : [x_ord, y_ord], weight, x_detection_center, y_detection_center, size_target, frame_count_since_born,
         # initial motion direction, initial velocity, future key in the dict
-        weight = 0
+        weight = 1
+        success_track_frame = 1
         frame_born = frame_number
         particles = []
         to_add_to_dict_particle = dict()
@@ -196,11 +198,11 @@ while(1):
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
             if (i < x_limit or i > x_w_limit or j < y_limit or j > y_h_limit) and frame_number > 2:
-                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
 	            # Plot the particles
                 cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             if frame_number <= 2:
-                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle)])
+                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
 	            # Plot the particles
                 cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
         # The particles are added to save_particles by tracker
@@ -279,11 +281,17 @@ while(1):
         if save_association.has_key(key):
             coord_part = partic[0]
             coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
+            # Detection term
             detection_term = beta * 1 * normal_distrib2.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
             # Update the data obtained from the association
             partic[2] = save_association[key][0][1][1]
             partic[3] = save_association[key][0][1][2]
             partic[4] = save_association[key][0][1][10]
+            partic[9] = partic[9] + 1
+            # Classifier term
+            classifier_term = 1
+            new_weight = detection_term + classifier_term
+            partic[1] = (1/float(number_particles)) * new_weight
 
     ### End of the Bootstrap Filter : Observation Model ###
 
@@ -291,7 +299,25 @@ while(1):
 
     ### Resampling ###
 
-
+    copy_dict_particle = dict()
+    for key,track in dict_particle.iteritems():
+        sum_part = 0
+        norm_weight = []
+        weight = []
+        # Sum of the weights
+        for part in track:
+            sum_part = sum_part + part[1]
+        # Normalize the weight
+        for part in track:
+            norm_weight.append(part[1]/float(sum_part))
+            weight.append(track.index(part))
+        random_weight = np.random.choice(weight,number_particles,p=norm_weight)
+        # Build the new sample of particles
+        copy_dict_particle[key] = []
+        for idx in random_weight:
+            copy_dict_particle[key].append(track[idx])
+    dict_particle = dict()
+    dict_particle = copy_dict_particle
 
     ### End of Resampling ###
 
@@ -308,12 +334,12 @@ while(1):
             noise_position = np.random.normal(0,part[4])
         else:
             noise_position = 0
-        noise_velocity = np.random.normal(0,1/float(frame_number))
+        noise_velocity = np.random.normal(0,1/float(part[9]))
         timestamp = datetime.datetime.now() - ts2
         timestamp = timestamp.total_seconds()
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key]
+        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key,part[9]]
         if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
 	        if copy_dict_particle.has_key(key):
 	            copy_dict_particle[key].append(new_part)
