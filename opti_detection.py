@@ -25,7 +25,6 @@ colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255),
 
 number_particles = 100
 
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
@@ -53,9 +52,16 @@ threshold_velocity_target = 1000
 # TO DEFINE
 threshold_matching_score = 0
 
+# TO DEFINE
+nb_detect_save = 5
+
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
+
+# Normal distribution
+standard_dev = 0.5
+normal_distrib = ss.norm(0,standard_dev)
 
 # Start of the timestamp
 ts = datetime.datetime.now()
@@ -197,14 +203,14 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            if (i < x_limit or i > x_w_limit or j < y_limit or j > y_h_limit) and frame_number > 2:
-                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
+            # if (i < x_limit or i > x_w_limit or j < y_limit or j > y_h_limit) and frame_number > 2:
+                # particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
 	            # Plot the particles
-                cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
-            if frame_number <= 2:
-                particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
+                #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
+            # if frame_number <= 2:
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
 	            # Plot the particles
-                cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
+                #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
         # The particles are added to save_particles by tracker
         #dict_particle[len(dict_particle)] = particles
         if particles != []:
@@ -225,6 +231,16 @@ while(1):
 
 
 
+    ### Delete too old Detections ###
+
+    for key_detec, val_detec in dict_detection.iteritems():
+    	if len(val_detec) > nb_detect_save:
+    		dict_detection[key_detec] = val_detec[nb_detect_save:]
+
+    ### End of Delete too old Detections ###
+
+
+
     ### Data Association ###
 
     # Calculate the distance between each detection,tracker pair.
@@ -235,8 +251,6 @@ while(1):
     if dict_detection != dict():
         # The loop iterate over the trackers and not the particles
         prev_detect = None
-        standard_dev = 0.5
-        normal_distrib1 = ss.norm(0,standard_dev)
         for tracker,detect in list(itertools.product(dict_particle.values(),list(itertools.chain.from_iterable(dict_detection.values())))):
             d = [detect[1],detect[2]]
             size_detection = detect[10]
@@ -245,15 +259,15 @@ while(1):
                 size_tracker = prev_detect[10]
                 pos_tracker = [prev_detect[1],prev_detect[2]]
                 velocity = detect[8]
-                agreement_target_detection = normal_distrib1.cdf((size_tracker - size_detection) / float(size_tracker))
+                agreement_target_detection = normal_distrib.cdf((size_tracker - size_detection) / float(size_tracker))
                 if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
-                    gating = agreement_target_detection * normal_distrib1.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
+                    gating = agreement_target_detection * normal_distrib.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
                 else:
                     distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                    gating = agreement_target_detection * normal_distrib1.cdf(distance_detection_motiontracker)
+                    gating = agreement_target_detection * normal_distrib.cdf(distance_detection_motiontracker)
                 sum_part_tracker = 0
                 for part in tracker:
-                    sum_part_tracker = sum_part_tracker + normal_distrib1.cdf(ssp.distance.euclidean(d,part[0]))
+                    sum_part_tracker = sum_part_tracker + normal_distrib.cdf(ssp.distance.euclidean(d,part[0]))
                 matching_score = gating * (1 + alpha * sum_part_tracker)
                 if matching_score > threshold_matching_score:
                     index_tracker = tracker[0][8]
@@ -274,22 +288,29 @@ while(1):
 
     ### Bootstrap Filter : Observation Model ###
     # Choose this parameter
-    standard_dev = 0.5
-    normal_distrib2 = ss.norm(0,standard_dev)
     for partic in list(itertools.chain.from_iterable(dict_particle.values())):
         key = partic[8]
         if save_association.has_key(key):
             coord_part = partic[0]
             coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
             # Detection term
-            detection_term = beta * 1 * normal_distrib2.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
+            detection_term = beta * 1 * normal_distrib.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
             # Update the data obtained from the association
             partic[2] = save_association[key][0][1][1]
             partic[3] = save_association[key][0][1][2]
             partic[4] = save_association[key][0][1][10]
             partic[9] = partic[9] + 1
             # Classifier term
-            classifier_term = 1
+            detect = save_association[key][0][1]
+            detect_group = detect[7]
+            index_detect = len(dict_detection[detect_group])
+            if index_detect != 0:
+            	prev_hist_detect = dict_detection[detect_group][index_detect-1][0]
+            	hist_detect = detect[0]
+            	#always 1.0 -> problem
+            	classifier_term = cv2.compareHist(hist_detect,prev_hist_detect,cv2.cv.CV_COMP_BHATTACHARYYA)
+            else:
+            	classifier_term = 0
             new_weight = detection_term + classifier_term
             partic[1] = (1/float(number_particles)) * new_weight
 
@@ -360,6 +381,17 @@ while(1):
 
     ## End of the Instantiation of the new Trackers ##
 
+
+
+    ## Print the Particles ##
+
+    # for part in list(itertools.chain.from_iterable(to_add_to_dict_particle.values())):
+    # 	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)
+
+    for part in list(itertools.chain.from_iterable(dict_particle.values())):
+    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)    	
+
+    ## End of the Print of the Particles ##
 
 
 
