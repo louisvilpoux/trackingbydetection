@@ -199,48 +199,48 @@ while(1):
     # Calculate the distance between each detection,tracker pair.
     # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
     # has been found. It used the Python library itertools and make the product of the data of both lists.
-    if save_detections != []:
-        # change the for loop to iterate over the tracker and not the particles
-        for tracker, detect in list(itertools.product(save_particles,save_detections)):
-            d = [detect[1],detect[2]]
-            size_detection = detect[10]
-            group = detect[7]
-            index_prev_detect = 0
-            index_detect = detect[11]
-            for prev_detect in save_detections:
-                if prev_detect[7] == group and index_prev_detect < index_detect:
-                    size_tracker = prev_detect[10]
-                    pos_tracker = [prev_detect[1],prev_detect[2]]
-                else:
-                    # TO VERIFY BECAUSE SEEMS STRANGE
-                    # size_tracker = size_detection
-                    # pos_tracker = d
-                    size_tracker = size_detection + 0.001
-                    pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
-                index_prev_detect = index_prev_detect + 1
-            velocity = detect[8]
-            agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
-            if abs(velocity) < threshold_velocity_target:
-                gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
-            else:
-                distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                gating = agreement_target_detection * distance_detection_motiontracker
-            sum_part_tracker = 0
-            for part in tracker:
-                sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
-            matching_score = gating * (1 + alpha * sum_part_tracker)
-            if matching_score > threshold_matching_score:
-                index_tracker = save_particles.index(tracker)
-                save_association[index_tracker].append([tracker,detect,matching_score])
-        # From all the associations available, pick the assocation that has the best score
-        # TO BE CORRECTED
-        for key_asso, val_asso in save_association.iteritems():
-            max_val = 0
-            if val_asso != []:
-                for val_tripl in val_asso:
-                    if val_tripl[2] > max_val:
-                        max_val = val_tripl[2]
-                save_association[key_asso] = val_tripl
+    # if save_detections != []:
+    #     # change the for loop to iterate over the tracker and not the particles
+    #     for tracker, detect in list(itertools.product(save_particles,save_detections)):
+    #         d = [detect[1],detect[2]]
+    #         size_detection = detect[10]
+    #         group = detect[7]
+    #         index_prev_detect = 0
+    #         index_detect = detect[11]
+    #         for prev_detect in save_detections:
+    #             if prev_detect[7] == group and index_prev_detect < index_detect:
+    #                 size_tracker = prev_detect[10]
+    #                 pos_tracker = [prev_detect[1],prev_detect[2]]
+    #             else:
+    #                 # TO VERIFY BECAUSE SEEMS STRANGE
+    #                 # size_tracker = size_detection
+    #                 # pos_tracker = d
+    #                 size_tracker = size_detection + 0.001
+    #                 pos_tracker = [d[0]+ 0.001 , d[1]+ 0.001]
+    #             index_prev_detect = index_prev_detect + 1
+    #         velocity = detect[8]
+    #         agreement_target_detection = np.random.normal(0, abs(size_tracker - size_detection) / float(size_tracker))
+    #         if abs(velocity) < threshold_velocity_target:
+    #             gating = agreement_target_detection * np.random.normal(0,abs(ssp.distance.euclidean(d,pos_tracker)))
+    #         else:
+    #             distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
+    #             gating = agreement_target_detection * distance_detection_motiontracker
+    #         sum_part_tracker = 0
+    #         for part in tracker:
+    #             sum_part_tracker = sum_part_tracker + np.random.normal(0,abs(ssp.distance.euclidean(d,part[0])))
+    #         matching_score = gating * (1 + alpha * sum_part_tracker)
+    #         if matching_score > threshold_matching_score:
+    #             index_tracker = save_particles.index(tracker)
+    #             save_association[index_tracker].append([tracker,detect,matching_score])
+    #     # From all the associations available, pick the assocation that has the best score
+    #     # TO BE CORRECTED
+    #     for key_asso, val_asso in save_association.iteritems():
+    #         max_val = 0
+    #         if val_asso != []:
+    #             for val_tripl in val_asso:
+    #                 if val_tripl[2] > max_val:
+    #                     max_val = val_tripl[2]
+    #             save_association[key_asso] = val_tripl
 
 
 
@@ -257,20 +257,20 @@ while(1):
 
     ### Propagation ###
 
-    for track in save_particles:
-        for part in track:
-            old_position = part[0]
-            old_velocity = part[7]
-            if part[4] != None:
-                noise_position = np.random.normal(0,part[4])
-            else:
-                noise_position = 0
-            noise_velocity = np.random.normal(0,1/float(frame_number))
-            timestamp = datetime.datetime.now() - ts2
-            timestamp = timestamp.total_seconds()
-            new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
-            new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-            track[track.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
+    # for track in save_particles:
+    #     for part in track:
+    #         old_position = part[0]
+    #         old_velocity = part[7]
+    #         if part[4] != None:
+    #             noise_position = np.random.normal(0,part[4])
+    #         else:
+    #             noise_position = 0
+    #         noise_velocity = np.random.normal(0,1/float(frame_number))
+    #         timestamp = datetime.datetime.now() - ts2
+    #         timestamp = timestamp.total_seconds()
+    #         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
+    #         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
+    #         track[track.index(part)] = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity]
 
     ### End of the Propagation ###
 

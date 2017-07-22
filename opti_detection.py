@@ -44,7 +44,7 @@ beta = 20
 gamma = 2
 etha = 1
 
-threshold_compare_hist = 0.85
+threshold_compare_hist_dist = 0.85
 
 # TO DEFINE
 threshold_velocity_target = 1000
@@ -99,7 +99,7 @@ while(1):
  
         # Compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        color_detect = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
 
         # Compute the center of the contour for each detection. cX and cY are the coords of the detection center
         M = cv2.moments(c)
@@ -121,8 +121,9 @@ while(1):
             velocity_target = 0
             timestamp = datetime.datetime.now()
             dict_detection[len(dict_detection)] = []
-            dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+            dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,color_detect])
             cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color_detect, 2)
 
         # Comparison of the descriptor of the past detections.
         # Try first if it is not the first frame and if we already have detect some objects.
@@ -145,7 +146,8 @@ while(1):
             if len(dict_detection) != 0:
                 for key_detec, val_detec in dict_detection.iteritems():
                     if len(val_detec) != 0:
-                        if cv2.compareHist(hist,val_detec[len(val_detec)-1][0],cv2.cv.CV_COMP_CORREL) > threshold_compare_hist:
+                        comp_hist_dist = cv2.compareHist(hist,val_detec[len(val_detec)-1][0],cv2.cv.CV_COMP_CORREL)
+                        if comp_hist_dist > threshold_compare_hist_dist:
                             dist_centers = ssp.distance.cdist([(val_detec[len(val_detec)-1][1],val_detec[len(val_detec)-1][2])],[(cX,cY)],'euclidean')[0][0]
                             used = True
                             candidate_key.append(key_detec)
@@ -160,16 +162,19 @@ while(1):
                 timestamp = datetime.datetime.now() - ts
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
-                dict_detection[candidate_key[index]].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+                color_group = dict_detection[candidate_key[index]][len(dict_detection[candidate_key[index]]) - 1][11]
+                dict_detection[candidate_key[index]].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,color_group])
                 cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), color_group, 2)
             # We must add a new detector
             else:
                 detect_group = len(dict_detection)
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
                 dict_detection[len(dict_detection)] = []
-                dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h])
+                dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,color_detect])
                 cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), color_detect, 2)
 
 
         # draw the particles
@@ -208,7 +213,7 @@ while(1):
 	            # Plot the particles
                 #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # if frame_number <= 2:
-            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame,(255,255,255)])
 	            # Plot the particles
                 #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
         # The particles are added to save_particles by tracker
@@ -300,6 +305,7 @@ while(1):
             partic[3] = save_association[key][0][1][2]
             partic[4] = save_association[key][0][1][10]
             partic[9] = partic[9] + 1
+            partic[10] = save_association[key][0][1][11]
             # Classifier term
             detect = save_association[key][0][1]
             detect_group = detect[7]
@@ -360,7 +366,7 @@ while(1):
         timestamp = timestamp.total_seconds()
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key,part[9]]
+        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key,part[9],part[10]]
         if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
 	        if copy_dict_particle.has_key(key):
 	            copy_dict_particle[key].append(new_part)
@@ -389,7 +395,8 @@ while(1):
     # 	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)
 
     for part in list(itertools.chain.from_iterable(dict_particle.values())):
-    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)    	
+    	#print len(part),part[9]
+    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)    	
 
     ## End of the Print of the Particles ##
 
