@@ -23,10 +23,10 @@ colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255),
 number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
-min_area = 100
+min_area = 700
 
 nb = 0
 

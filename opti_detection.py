@@ -25,10 +25,12 @@ colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255),
 
 number_particles = 100
 
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
-min_area = 100
+#min_area = 700
+min_area = 500
 
 nb = 0
 
@@ -44,10 +46,10 @@ beta = 20
 gamma = 2
 etha = 1
 
-threshold_compare_hist_dist = 0.85
+threshold_compare_hist_dist = 0.75
 
 # TO DEFINE
-threshold_velocity_target = 1000
+threshold_velocity_target = 80
 
 # TO DEFINE
 threshold_matching_score = 0
@@ -60,7 +62,7 @@ fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
 
 # Normal distribution
-standard_dev = 0.5
+standard_dev = 0.1
 normal_distrib = ss.norm(0,standard_dev)
 
 # Start of the timestamp
