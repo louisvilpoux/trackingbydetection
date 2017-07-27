@@ -1,8 +1,3 @@
-# /Users/louisvilpoux/anaconda/bin/jupyter_mac.command ; exit;
-# cd Documents/Manchester/Dissertation/trackingbydetection/
-
-# repere used : x_ord go to the right (->) ; y_ord go to the bottom (|)
-
 import numpy as np
 import pandas as pd
 import cv2
@@ -229,165 +224,8 @@ while(1):
 
         index_add = index_add + 1
 
-
-    ### Delete not associated Particles ###
-
-    for part in list(itertools.chain.from_iterable(dict_particle.values())):
-        if frame_number - part[5] > frame_number_delete and part[2] == None:
-            idx = part[8]
-            dict_particle[idx].remove(part)
-            if len(dict_particle[idx]) == 0:
-                dict_particle.pop(idx,None)
-
-    ### End of Delete not associated Particles ###
-
-
-
-    ### Delete too old Detections ###
-
-    for key_detec, val_detec in dict_detection.iteritems():
-    	if len(val_detec) > nb_detect_save:
-    		dict_detection[key_detec] = val_detec[nb_detect_save:]
-
-    ### End of Delete too old Detections ###
-
-
-
-    ### Data Association ###
-
-    # Calculate the distance between each detection,tracker pair.
-    # Because two for loops is too computationaly expensive, another way to try all the possible values of both lists
-    # has been found. It used the Python library itertools and make the product of the data of both lists.
-    # From all the associations available, pick the assocation that has the best score (greater than the threshold)
-    if dict_detection != dict():
-        # The loop iterate over the trackers and not the particles
-        prev_detect = None
-        for tracker,detect in list(itertools.product(dict_particle.values(),list(itertools.chain.from_iterable(dict_detection.values())))):
-            d = [detect[1],detect[2]]
-            size_detection = detect[10]
-            group = detect[7]
-            if prev_detect != None and prev_detect[7] == group:
-                size_tracker = prev_detect[10]
-                pos_tracker = [prev_detect[1],prev_detect[2]]
-                velocity = detect[8]
-                agreement_target_detection = normal_distrib.cdf((size_tracker - size_detection) / float(size_tracker))
-                #print abs(velocity)
-                if abs(velocity) < threshold_velocity_target and abs(ssp.distance.euclidean(d,pos_tracker)) != 0:
-                    gating = agreement_target_detection * normal_distrib.cdf(abs(ssp.distance.euclidean(d,pos_tracker)))
-                else:
-                    distance_detection_motiontracker = (abs(tracker[0][6][0]*detect[1] + tracker[0][6][1]*detect[2]))/math.sqrt((tracker[0][6][0]**2)+(tracker[0][6][1]**2))
-                    gating = agreement_target_detection * normal_distrib.cdf(distance_detection_motiontracker)
-                sum_part_tracker = 0
-                for part in tracker:
-                    sum_part_tracker = sum_part_tracker + normal_distrib.cdf(ssp.distance.euclidean(d,part[0]))
-                matching_score = gating * (1 + alpha * sum_part_tracker)
-                if matching_score > threshold_matching_score:
-                    index_tracker = tracker[0][8]
-                    if save_association.has_key(index_tracker):
-                        if matching_score > save_association[index_tracker][0][2]:
-                            save_association[index_tracker] = []
-                            save_association[index_tracker].append([tracker,detect,matching_score])
-                        else:
-                            continue
-                    else:
-                        save_association[index_tracker] = []
-                        save_association[index_tracker].append([tracker,detect,matching_score])
-            prev_detect = detect
-
-    ### End of Data Association ###
-
-
-
-    ### Bootstrap Filter : Observation Model ###
-    # Choose this parameter
-    for partic in list(itertools.chain.from_iterable(dict_particle.values())):
-        key = partic[8]
-        if save_association.has_key(key):
-            coord_part = partic[0]
-            coord_detec = [save_association[key][0][1][1],save_association[key][0][1][2]]
-            # Detection term
-            detection_term = beta * 1 * normal_distrib.cdf(abs(ssp.distance.euclidean(coord_part,coord_detec)))
-            # Update the data obtained from the association
-            partic[2] = save_association[key][0][1][1]
-            partic[3] = save_association[key][0][1][2]
-            partic[4] = save_association[key][0][1][10]
-            partic[9] = partic[9] + 1
-            partic[10] = save_association[key][0][1][11]
-            # Classifier term
-            detect = save_association[key][0][1]
-            detect_group = detect[7]
-            index_detect = len(dict_detection[detect_group])
-            if index_detect != 0:
-            	prev_hist_detect = dict_detection[detect_group][index_detect-1][0]
-            	hist_detect = detect[0]
-            	#always 1.0 -> problem
-                #reduce the number of bin and normalize red & green
-            	classifier_term = cv2.compareHist(hist_detect,prev_hist_detect,cv2.cv.CV_COMP_BHATTACHARYYA)
-            else:
-            	classifier_term = 0
-            new_weight = detection_term + classifier_term
-            partic[1] = (1/float(number_particles)) * new_weight
-
-    ### End of the Bootstrap Filter : Observation Model ###
-
-
-
-    ### Resampling ###
-
-    copy_dict_particle = dict()
-    for key,track in dict_particle.iteritems():
-        sum_part = 0
-        norm_weight = []
-        weight = []
-        # Sum of the weights
-        for part in track:
-            sum_part = sum_part + part[1]
-        # Normalize the weight
-        for part in track:
-            norm_weight.append(part[1]/float(sum_part))
-            weight.append(track.index(part))
-        random_weight = np.random.choice(weight,number_particles,p=norm_weight)
-        # Build the new sample of particles
-        copy_dict_particle[key] = []
-        for idx in random_weight:
-            copy_dict_particle[key].append(track[idx])
-    dict_particle = dict()
-    dict_particle = copy_dict_particle
-
-    ### End of Resampling ###
-
-
-
-    ### Propagation ###
-
-    copy_dict_particle = dict()
-    for part in list(itertools.chain.from_iterable(dict_particle.values())):
-        old_position = part[0]
-        old_velocity = part[7]
-        key = part[8]
-        if part[4] != None:
-            noise_position = np.random.normal(0,part[4])
-        else:
-            noise_position = 0
-        noise_velocity = np.random.normal(0,1/float(part[9]))
-        timestamp = datetime.datetime.now() - ts2
-        timestamp = timestamp.total_seconds()
-        new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
-        new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key,part[9],part[10]]
-        if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
-            if copy_dict_particle.has_key(key):
-                copy_dict_particle[key].append(new_part)
-            else:
-                copy_dict_particle[key] = []
-                copy_dict_particle[key].append(new_part)
-    dict_particle = dict()
-    dict_particle = copy_dict_particle
-
-    ### End of the Propagation ###
-
-
-
+    print "idx", index_add
+    print "avant instan",len(dict_particle)
    ## Instantiation of the new trackers ##
 
     for key_track, track in to_add_to_dict_particle.iteritems():
@@ -399,23 +237,24 @@ while(1):
 
 
 
+    print "apres instan",len(dict_particle)
     ## Print the Particles ##
 
-    # for part in list(itertools.chain.from_iterable(to_add_to_dict_particle.values())):
-    # 	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)
-
     for part in list(itertools.chain.from_iterable(dict_particle.values())):
-    	#print len(part),part[9]
-    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)    	
+        cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)
+
+    # for part in list(itertools.chain.from_iterable(to_add_to_dict_particle.values())):
+    #     cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)  
 
     ## End of the Print of the Particles ##
 
+    print "########"
 
 
-    # Print the data of a special frame
-    # nb = nb + 1
-    # if nb == 10:
-    #     print("save_association", save_association)
+
+
+
+
 
 
     # not anymore the first frame

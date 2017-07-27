@@ -22,11 +22,11 @@ colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255),
 
 number_particles = 100
 
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/people-walking.mp4"
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
-min_area = 700
+min_area = 100
 
 nb = 0
 
@@ -171,7 +171,7 @@ while(1):
         particles = []
         for i,j in zip(part_x,part_y):
             # plot the particles
-            cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
+            #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # Initialisation of the motion direction : orthogonal to the closest image borders
             dist_right = width - i
             dist_up = j
@@ -193,6 +193,9 @@ while(1):
         save_association[save_particles.index(particles)] = []
 
 
+    # Possible display
+    for i in list(itertools.chain.from_iterable(save_particles)):
+        cv2.circle(frame,(int(i[0][0]),int(i[0][1])),1,(0, 0, 255), 0)
 
     ### Data Association ###
 
