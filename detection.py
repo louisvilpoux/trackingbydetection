@@ -43,13 +43,7 @@ alpha = 2
 # Dictionary of unique detections
 uniq_detection = dict()
 
-threshold_compare_hist = 0.85
-
-# TO DEFINE
-threshold_velocity_target = 1000
-
-# TO DEFINE
-threshold_matching_score = 0
+threshold_compare_hist = 0.81
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
@@ -69,7 +63,7 @@ while(1):
 
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
-    fgmask = fgbg.apply(frame, learningRate=0.11)
+    fgmask = fgbg.apply(frame, learningRate=1.0/10)
 
     # Dilation
     dilation = cv2.dilate(fgmask,None,iterations = 2);
