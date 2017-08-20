@@ -23,16 +23,18 @@ dict_particle = dict()
 colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
           "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
-number_particles = 50
+number_particles = 30
 
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/short_pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
-min_area = 300
+#min_area = 300
 #min_area = 700
-#min_area = 500
+min_area = 700
+#min_area = 700
 
 nb = 0
 
@@ -54,17 +56,17 @@ threshold_compare_hist_dist = 0.8
 threshold_velocity_target = 0
 
 # TO DEFINE
-threshold_matching_score = 0
+threshold_matching_score = 20
 
 # TO DEFINE
-nb_detect_save = 5
+nb_detect_save = 4
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
 
 # Normal distribution
-standard_dev = 0.2
+standard_dev = 0.1
 normal_distrib = ss.norm(0,standard_dev)
 
 # Start of the timestamp
@@ -179,6 +181,7 @@ while(1):
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
                 dict_detection[len(dict_detection)] = []
+                #if (cX < x_limit or cX > x_w_limit) and (cY < y_limit or cY > y_h_limit):
                 dict_detection[len(dict_detection)-1].append([hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h,color_detect])
                 cv2.putText(frame, str(len(dict_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), color_detect, 2)
@@ -244,7 +247,7 @@ while(1):
 
 
     ### Delete too old Detections ###
-
+    # It conserves the last nb_detect_save detections of each group
     for key_detec, val_detec in dict_detection.iteritems():
     	if len(val_detec) > nb_detect_save:
     		dict_detection[key_detec] = val_detec[nb_detect_save:]
@@ -297,7 +300,6 @@ while(1):
     ### End of Data Association ###
 
 
-
     ### Bootstrap Filter : Observation Model ###
     # Choose this parameter
     for partic in list(itertools.chain.from_iterable(dict_particle.values())):
@@ -312,6 +314,7 @@ while(1):
             partic[3] = save_association[key][0][1][2]
             partic[4] = save_association[key][0][1][10]
             partic[9] = partic[9] + 1
+            partic[5] = frame_number
             partic[10] = save_association[key][0][1][11]
             # Classifier term
             detect = save_association[key][0][1]
@@ -326,7 +329,8 @@ while(1):
             else:
             	classifier_term = 0
             new_weight = detection_term + classifier_term
-            partic[1] = (1/float(number_particles)) * new_weight
+            #partic[1] = (1/float(number_particles)) * new_weight
+            partic[1] = new_weight
 
     ### End of the Bootstrap Filter : Observation Model ###
 
@@ -366,15 +370,19 @@ while(1):
         old_velocity = part[7]
         key = part[8]
         if part[4] != None:
-            noise_position = np.random.normal(0,part[4])
+            #noise_position = np.random.normal(0,part[4])
+            noise_position = 0
         else:
             noise_position = 0
-        noise_velocity = np.random.normal(0,1/float(part[9]))
+        #noise_velocity = np.random.normal(0,1/float(part[9]))
+        noise_velocity = 0
         timestamp = datetime.datetime.now() - ts2
         timestamp = timestamp.total_seconds()
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
-        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],part[6],new_velocity,key,part[9],part[10]]
+        new_motion_direction = [new_position[0] - old_position[0] , new_position[1] - old_position[1]]
+        new_motion_direction = part[6]
+        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],new_motion_direction,new_velocity,key,part[9],part[10]]
         if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
             if copy_dict_particle.has_key(key):
                 copy_dict_particle[key].append(new_part)
@@ -389,6 +397,7 @@ while(1):
 
 
    ## Instantiation of the new trackers ##
+   # Only for the new detections. Could be bad in the case of new not associated detections.
 
     for key_track, track in to_add_to_dict_particle.iteritems():
         # if dict_particle.has_key(key_track):
@@ -406,7 +415,7 @@ while(1):
 
     for part in list(itertools.chain.from_iterable(dict_particle.values())):
     	#print len(part),part[9]
-    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)    	
+    	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)
 
     ## End of the Print of the Particles ##
 
