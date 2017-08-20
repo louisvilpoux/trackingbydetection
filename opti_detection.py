@@ -15,6 +15,7 @@ import itertools
 import datetime
 import math
 import random
+import argparse
 
 save_particles = []
 save_detections = []
@@ -27,7 +28,7 @@ number_particles = 30
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/short_pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
@@ -42,26 +43,30 @@ nb = 0
 firstFrame = None
 
 frame_number = 0
-frame_number_delete = 5
+frame_number_delete = 2
 
 # Parameters in the formulas
-alpha = 1
-beta = 10
-gamma = 1
-etha = 0.5
+alpha = 2
+beta = 20
+gamma = 2
+etha = 1
 
-threshold_compare_hist_dist = 0.8
+threshold_compare_hist_dist = 0.81
 
 # TO DEFINE
-threshold_velocity_target = 0
+threshold_velocity_target = 20
 
 # TO DEFINE
 threshold_matching_score = 20
 
 # TO DEFINE
-nb_detect_save = 4
+nb_detect_save = 2
 
-cap = cv2.VideoCapture(video)
+#cap = cv2.VideoCapture(video)
+ap = argparse.ArgumentParser()
+ap.add_argument("-v", "--video", help="path to the input video")
+args = vars(ap.parse_args())
+cap = cv2.VideoCapture(args["video"])
 fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
 
@@ -96,7 +101,7 @@ while(1):
     y_limit = width/8
     x_w_limit = 9*width/10
     y_h_limit = 7*width/10
-    cv2.rectangle(frame, (x_limit, y_limit), (x_w_limit, y_h_limit), (0, 255, 255), 2)
+    #cv2.rectangle(frame, (x_limit, y_limit), (x_w_limit, y_h_limit), (0, 255, 255), 2)
 
     index_add = 0
     to_add_to_dict_particle = dict()
@@ -222,8 +227,11 @@ while(1):
 	            # Plot the particles
                 #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
             # if frame_number <= 2:
+
+            #particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[velocity_target,velocity_target],len(dict_particle),success_track_frame,(255,255,255)])
             particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame,(255,255,255)])
-	            # Plot the particles
+	        
+                # Plot the particles
                 #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
         # The particles are added to save_particles by tracker
         #dict_particle[len(dict_particle)] = particles
@@ -236,7 +244,8 @@ while(1):
     ### Delete not associated Particles ###
 
     for part in list(itertools.chain.from_iterable(dict_particle.values())):
-        if frame_number - part[5] > frame_number_delete and part[2] == None:
+        #if frame_number - part[5] > frame_number_delete and part[2] == None:
+        if frame_number - part[5] > frame_number_delete:
             idx = part[8]
             dict_particle[idx].remove(part)
             if len(dict_particle[idx]) == 0:
@@ -374,8 +383,10 @@ while(1):
             noise_position = 0
         else:
             noise_position = 0
-        #noise_velocity = np.random.normal(0,1/float(part[9]))
-        noise_velocity = 0
+        noise_velocity = np.random.normal(0,1/float(part[9]))
+
+        #noise_velocity = 0
+
         timestamp = datetime.datetime.now() - ts2
         timestamp = timestamp.total_seconds()
         new_position = [old_position[0] + old_velocity[0] * timestamp + noise_position , old_position[1] + old_velocity[1] * timestamp + noise_position]
@@ -383,6 +394,12 @@ while(1):
         new_motion_direction = [new_position[0] - old_position[0] , new_position[1] - old_position[1]]
         new_motion_direction = part[6]
         new_part = [new_position,part[1],part[2],part[3],part[4],part[5],new_motion_direction,new_velocity,key,part[9],part[10]]
+        
+        # if old_position == new_position:
+        #     print old_position[0],new_position[0]
+        # else:
+        #     print "no"
+        
         if new_position[0] > 0 or new_position[0] < width or new_position[1] > 0 or new_position[1] < width:
             if copy_dict_particle.has_key(key):
                 copy_dict_particle[key].append(new_part)

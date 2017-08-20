@@ -23,8 +23,8 @@ colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255),
 number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/short_pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
@@ -69,7 +69,7 @@ while(1):
 
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
-    fgmask = fgbg.apply(frame, learningRate=1.0/10)
+    fgmask = fgbg.apply(frame, learningRate=0.11)
 
     # Dilation
     dilation = cv2.dilate(fgmask,None,iterations = 2);
@@ -196,8 +196,8 @@ while(1):
 
 
     # Possible display
-    for i in list(itertools.chain.from_iterable(save_particles)):
-        cv2.circle(frame,(int(i[0][0]),int(i[0][1])),1,(0, 0, 255), 0)
+    #for i in list(itertools.chain.from_iterable(save_particles)):
+    #    cv2.circle(frame,(int(i[0][0]),int(i[0][1])),1,(0, 0, 255), 0)
 
     ### Data Association ###
 
