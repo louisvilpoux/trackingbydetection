@@ -29,7 +29,6 @@ number_particles = 30
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/short_pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 #min_area = 300

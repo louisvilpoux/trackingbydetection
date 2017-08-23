@@ -21,15 +21,12 @@ save_particles = []
 save_detections = []
 dict_detection = dict()
 dict_particle = dict()
-colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
-          "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
 number_particles = 30
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/short_pets.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 #min_area = 300
