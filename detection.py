@@ -24,7 +24,7 @@ number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway31.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 min_area = 700
@@ -76,13 +76,13 @@ while(1):
  
 		# compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         # compute the center of the contour for each detection. cX and cY are the coords of the detection center
         M = cv2.moments(c)
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
-        cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
+        #cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
         #cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Compute the descriptor : histogram of the color of the detection
@@ -99,7 +99,7 @@ while(1):
             velocity_target = 0
             timestamp = datetime.datetime.now()
             uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-            cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            #cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
         # Try first if it is not the first frame and if we already have detect some objects.
@@ -134,14 +134,14 @@ while(1):
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
                 uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-                cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                #cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
                 detect_group = len(uniq_detection)
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
                 uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-                cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                #cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # print(len(uniq_detection))
 

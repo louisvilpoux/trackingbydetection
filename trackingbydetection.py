@@ -45,7 +45,7 @@ frame_number_delete = 2
 # Parameters in the formulas
 alpha = 2
 beta = 20
-gamma = 2
+#gamma = 2
 etha = 1
 
 threshold_compare_hist_dist = 0.81
@@ -335,7 +335,7 @@ while(1):
             	classifier_term = cv2.compareHist(hist_detect,prev_hist_detect,cv2.cv.CV_COMP_BHATTACHARYYA)
             else:
             	classifier_term = 0
-            new_weight = detection_term + classifier_term
+            new_weight = detection_term + etha * classifier_term
             #partic[1] = (1/float(number_particles)) * new_weight
             partic[1] = new_weight
 
