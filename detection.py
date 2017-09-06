@@ -17,19 +17,16 @@ import math
 save_particles = []
 save_detections = []
 save_association = dict()
-colors = {"red" : (255, 0, 0), "green" : (0, 255, 0), "white" : (255, 255, 255), 
-          "blue" : (0, 0, 255), "yellow" : (255, 255, 0) , "turquoise" : (0, 255, 255), "purple" : (255, 0, 255)}
 
 number_particles = 100
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
-video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
-#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway.mp4"
+#video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets4.mp4"
+video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/highway31.mp4"
 
 # Minimum size of the contours that will be considered. It permits to not deal with very little detections (noise)
 min_area = 700
 
-nb = 0
 
 # First frame in the video
 firstFrame = None
@@ -42,7 +39,7 @@ alpha = 2
 # Dictionary of unique detections
 uniq_detection = dict()
 
-threshold_compare_hist = 0.81
+threshold_compare_hist = 0.8
 
 cap = cv2.VideoCapture(video)
 fgbg = cv2.BackgroundSubtractorMOG2()
@@ -50,7 +47,7 @@ fgbg = cv2.BackgroundSubtractorMOG2()
 
 # Start of the timestamp
 ts = datetime.datetime.now()
-
+total = 0
 
 while(1):
     frame_number = frame_number + 1
@@ -59,30 +56,35 @@ while(1):
     #resize because of the performance
     width = 500
     frame = imutils.resize(frame, width=width)
+    #cv2.rectangle(frame, (0, 0), (500, 370), (0, 255, 255), 2)
 
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
-    fgmask = fgbg.apply(frame, learningRate=1.0/10)
+    fgmask = fgbg.apply(frame, learningRate=0.1)
 
     # Dilation
     dilation = cv2.dilate(fgmask,None,iterations = 2);
     
     (cnts, _) = cv2.findContours(dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    valid = 0
+
     for c in cnts:
 		# if the contour is too small, ignore it
         if cv2.contourArea(c) < min_area:
             continue
  
+        valid = valid + 1
+
 		# compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
-        #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         # compute the center of the contour for each detection. cX and cY are the coords of the detection center
         M = cv2.moments(c)
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
-        #cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
+        cv2.circle(frame, (cX, cY), 2, (255, 255, 255), -1)
         #cv2.putText(frame, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Compute the descriptor : histogram of the color of the detection
@@ -99,7 +101,7 @@ while(1):
             velocity_target = 0
             timestamp = datetime.datetime.now()
             uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-            #cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Comparison of the descriptor of the past detections.
         # Try first if it is not the first frame and if we already have detect some objects.
@@ -134,14 +136,14 @@ while(1):
                 timestamp = timestamp.total_seconds()
                 velocity_target = min(candidate_dist) / timestamp
                 uniq_detection[candidate_key[index]] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-                #cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.putText(frame, str(candidate_key[index]), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             # we must add a new detector
             else:
                 detect_group = len(uniq_detection)
                 velocity_target = 0
                 timestamp = datetime.datetime.now()
                 uniq_detection[len(uniq_detection)] = [hist,cX,cY,x,y,x+w,y+h,detect_group,velocity_target,timestamp,w*h]
-                #cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.putText(frame, str(len(uniq_detection)), (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # print(len(uniq_detection))
 
@@ -189,8 +191,17 @@ while(1):
 
 
 
+    total = total + valid
+    #if frame_number == 105:
+    if frame_number == 110:
+       print total
+
     # not anymore the first frame
     firstFrame = 1
+
+    #filename = "Results/Detection/threshold/{}/pets/pets_{}.jpg".format(threshold_compare_hist,frame_number)
+    #filename = "Results/Detection/threshold/{}/highway/highway_{}.jpg".format(threshold_compare_hist,frame_number)
+    #cv2.imwrite(filename, frame)
 
     cv2.imshow('fgmask',fgmask)
     cv2.imshow('frame',frame)
@@ -198,9 +209,6 @@ while(1):
 
     # timestamp_fin = datetime.datetime.now() - ts
     # timestamp_fin = timestamp_fin.total_seconds()
-    # if frame_number == 75:
-    #     print "fin",timestamp_fin
-    #     break
 
     
     k = cv2.waitKey(30) & 0xff

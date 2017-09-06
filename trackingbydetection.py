@@ -22,7 +22,7 @@ save_detections = []
 dict_detection = dict()
 dict_particle = dict()
 
-number_particles = 30
+number_particles = 35
 
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/mot1.mp4"
 #video = "/Users/louisvilpoux/Documents/Manchester/Dissertation/Data/pets.mp4"
@@ -40,21 +40,21 @@ nb = 0
 firstFrame = None
 
 frame_number = 0
-frame_number_delete = 2
+frame_number_delete = 6
 
 # Parameters in the formulas
-alpha = 2
-beta = 20
+alpha = 3
+beta = 60
 #gamma = 2
-etha = 1
+etha = 3
 
-threshold_compare_hist_dist = 0.81
+threshold_compare_hist_dist = 0.8
 
 # TO DEFINE
 threshold_velocity_target = 20
 
 # TO DEFINE
-threshold_matching_score = 20
+threshold_matching_score = 35
 
 # TO DEFINE
 nb_detect_save = 2
@@ -68,12 +68,15 @@ fgbg = cv2.BackgroundSubtractorMOG2()
 #fgbg = cv2.BackgroundSubtractorMOG()
 
 # Normal distribution
-standard_dev = 0.1
+standard_dev = 0.35
 normal_distrib = ss.norm(0,standard_dev)
 
 # Start of the timestamp
 ts = datetime.datetime.now()
 
+total = 0
+tot_part_asso = 0
+tot_part_asso_out = 0
 
 while(1):
     save_association = dict()
@@ -86,7 +89,7 @@ while(1):
 
     #learning rate set to 0
     #fgmask = fgbg.apply(frame)
-    fgmask = fgbg.apply(frame, learningRate=1.0/10)
+    fgmask = fgbg.apply(frame, learningRate=0.1)
 
     # Dilation
     dilation = cv2.dilate(fgmask,None,iterations = 2);
@@ -103,11 +106,15 @@ while(1):
     index_add = 0
     to_add_to_dict_particle = dict()
 
+    valid = 0
+
     for c in cnts:
         # If the contour is too small, ignore it
         if cv2.contourArea(c) < min_area:
             continue
  
+        valid = valid + 1
+
         # Compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
         #color_detect = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
@@ -220,14 +227,8 @@ while(1):
                 init_motion_dir = [0,1]
             if distance_min_border == dist_bottom:
                 init_motion_dir = [0,-1]
-            # if (i < x_limit or i > x_w_limit or j < y_limit or j > y_h_limit) and frame_number > 2:
-                # particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame])
-	            # Plot the particles
-                #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)
-            # if frame_number <= 2:
-
             #particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[velocity_target,velocity_target],len(dict_particle),success_track_frame,(255,255,255)])
-            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame,(255,255,255)])
+            particles.append([[i,j],weight,None,None,None,frame_born,init_motion_dir,[0,0],len(dict_particle),success_track_frame,(255,255,255),None])
 	        
                 # Plot the particles
                 #cv2.circle(frame,(int(i),int(j)),1,(0, 0, 255), 0)            	
@@ -323,6 +324,7 @@ while(1):
             partic[9] = partic[9] + 1
             partic[5] = frame_number
             partic[10] = save_association[key][0][1][11]
+            partic[11] = (save_association[key][0][1][3],save_association[key][0][1][4],save_association[key][0][1][5],save_association[key][0][1][6])
             # Classifier term
             detect = save_association[key][0][1]
             detect_group = detect[7]
@@ -391,7 +393,7 @@ while(1):
         new_velocity = [old_velocity[0] + noise_velocity , old_velocity[1] + noise_velocity]
         new_motion_direction = [new_position[0] - old_position[0] , new_position[1] - old_position[1]]
         new_motion_direction = part[6]
-        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],new_motion_direction,new_velocity,key,part[9],part[10]]
+        new_part = [new_position,part[1],part[2],part[3],part[4],part[5],new_motion_direction,new_velocity,key,part[9],part[10],part[11]]
         
         # if old_position == new_position:
         #     print old_position[0],new_position[0]
@@ -428,13 +430,58 @@ while(1):
     # for part in list(itertools.chain.from_iterable(to_add_to_dict_particle.values())):
     # 	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,(0, 0, 255), 0)
 
+
     for part in list(itertools.chain.from_iterable(dict_particle.values())):
-    	#print len(part),part[9]
+    # 	#print len(part),part[9]
     	cv2.circle(frame,(int(part[0][0]),int(part[0][1])),3,part[10], 0)
+        # if (part[2] != None):
+        #     if (part[11][0] <= part[0][0]) and (part[11][2] >= part[0][0]) and (part[11][1] <= part[0][1]) and (part[11][3] >= part[0][1]):
+        #         tot_part_asso = tot_part_asso + 1
+        #     else:
+        #         tot_part_asso_out = tot_part_asso_out + 1
 
     ## End of the Print of the Particles ##
 
 
+    ########################
+    ########################
+    ########################
+
+
+    #nombre de detection
+    total = total + valid
+
+    #nombre de particules
+    # tot_part = total * number_particles
+
+    time_total = datetime.datetime.now() - ts
+    time_total = time_total.total_seconds()
+
+    # pour pets
+    # if frame_number == 129:
+    #     print "######## RESULTS ########"
+    #     print "## speed : {} ##".format(time_total)
+    #     print "######## END RES ########"
+        # print "################################# RESULTS #################################"
+        # print "## nbre detect : {} ## nbre part asso : {} ## nbre total part : {} ##".format(total,tot_part_asso,tot_part)
+        # print "################################# END RES #################################"
+
+    #pour highway
+    # if frame_number == 111:
+    #     print "################################# RESULTS #################################"
+    #     print "## nbre detect : {} ## nbre part asso : {} ## nbre total part : {} ##".format(total,tot_part_asso,tot_part)
+    #     print "################################# END RES #################################"
+
+    #pets
+    #filename = "Results/Tracking/pets4/pets4_{}.jpg".format(frame_number)
+    #highway
+    #filename = "Results/Tracking/highway33/highway33_{}.jpg".format(frame_number)
+    #print filename
+    #cv2.imwrite(filename, frame)
+
+    ########################
+    ########################
+    ########################
 
     # Print the data of a special frame
     # nb = nb + 1
